@@ -16,7 +16,7 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 @Data
-class RegisterRequest {
+public class RegisterRequest {
     @NotBlank
     private String username;
 
@@ -29,7 +29,7 @@ class RegisterRequest {
 }
 
 @Data
-class LoginRequest {
+public class LoginRequest {
     @NotBlank
     private String username;
     @NotBlank
