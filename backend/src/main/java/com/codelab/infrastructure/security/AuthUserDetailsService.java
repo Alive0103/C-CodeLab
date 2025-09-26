@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import java.util.Collection;
 import java.util.List;
 
+import static com.codelab.service.AuthUserDetailsService.getUserDetails;
+
 @Service
 @RequiredArgsConstructor
 public class AuthUserDetailsService implements UserDetailsService {
