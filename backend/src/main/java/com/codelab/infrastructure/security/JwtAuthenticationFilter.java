@@ -1,6 +1,6 @@
 package com.codelab.infrastructure.security;
 
-import com.codelab.application.AuthUserDetailsService;
+
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

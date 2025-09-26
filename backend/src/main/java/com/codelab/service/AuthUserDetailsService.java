@@ -1,7 +1,7 @@
 package com.codelab.service;
 
 import com.codelab.domain.User;
-import com.codelab.repository.UserRepository;
+import com.codelab.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,6 +21,10 @@ public class AuthUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return getUserDetails(username, userRepository);
+    }
+
+    public static UserDetails getUserDetails(String username, UserRepository userRepository) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
         Collection<? extends GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(user.getRole()));

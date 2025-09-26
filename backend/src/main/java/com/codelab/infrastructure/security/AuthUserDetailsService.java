@@ -21,13 +21,7 @@ public class AuthUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        Collection<? extends GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(user.getRole()));
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(), user.getPasswordHash(), user.getEnabled(),
-                true, true, true, authorities
-        );
+        return getUserDetails(username, userRepository);
     }
 }
 
