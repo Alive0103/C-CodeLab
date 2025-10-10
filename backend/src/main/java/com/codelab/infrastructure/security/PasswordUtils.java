@@ -30,9 +30,17 @@ public class PasswordUtils {
     }
     
     /**
-     * 验证密码
+     * 验证密码（兼容旧接口）
      */
     public boolean verifyPassword(String rawPassword, String salt, String hashedPassword) {
+        // 为了兼容旧代码，忽略盐值参数
+        return verifyPassword(rawPassword, hashedPassword);
+    }
+    
+    /**
+     * 验证密码
+     */
+    public boolean verifyPassword(String rawPassword, String hashedPassword) {
         // BCrypt 验证时不需要额外处理盐值
         return passwordEncoder.matches(rawPassword, hashedPassword);
     }

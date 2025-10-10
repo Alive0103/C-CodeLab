@@ -46,12 +46,11 @@ public class AuthService {
             throw new IllegalArgumentException("账户已被禁用");
         }
         
-        if (!passwordUtils.verifyPassword(password, user.getPasswordSalt(), user.getPasswordHash())) {
+        // 修改验证方式，不再传递盐值参数
+        if (!passwordUtils.verifyPassword(password, user.getPasswordHash())) {
             throw new IllegalArgumentException("用户名或密码错误");
         }
         
         return user;
     }
 }
-
-
