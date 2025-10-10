@@ -16,7 +16,8 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  resolve: {
+    preserveSymlinks: true
   }
 })
-
-
