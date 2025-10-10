@@ -25,14 +25,8 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated()
             )
-            .formLogin(form -> form
-                .loginPage("/api/auth/login")
-                .permitAll()
-            )
-            .logout(logout -> logout
-                .logoutUrl("/api/auth/logout")
-                .permitAll()
-            );
+            .formLogin(form -> form.disable()) // 禁用默认的表单登录
+            .logout(logout -> logout.disable()); // 禁用默认的登出
         return http.build();
     }
 
