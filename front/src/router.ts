@@ -2,13 +2,17 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import LoginView from './views/LoginView.vue'
 import RegisterView from './views/RegisterView.vue'
 import EditorView from './views/EditorView.vue'
+import CodeHistoryView from './views/CodeHistoryView.vue'
+import UserProfileView from './views/UserProfileView.vue'
 import { useAuthStore } from './stores/auth'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/editor' },
   { path: '/login', component: LoginView },
   { path: '/register', component: RegisterView },
-  { path: '/editor', component: EditorView }
+  { path: '/editor', component: EditorView },
+  { path: '/code-history', component: CodeHistoryView },
+  { path: '/profile', component: UserProfileView }
 ]
 
 const router = createRouter({
@@ -17,8 +21,10 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  // 对于需要认证的页面进行检查
-  if (to.path === '/editor') {
+  // 需要认证的页面列表
+  const protectedRoutes = ['/editor', '/code-history', '/profile']
+  
+  if (protectedRoutes.includes(to.path)) {
     const auth = useAuthStore()
     // 如果store中没有用户信息，尝试获取
     if (!auth.user) {

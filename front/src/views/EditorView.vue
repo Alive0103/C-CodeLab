@@ -3,6 +3,8 @@
     <div class="topbar">
       <input v-model="title" placeholder="标题（可选）" />
       <div class="spacer"></div>
+      <button @click="goToCodeHistory" class="nav-btn">代码历史</button>
+      <button @click="goToProfile" class="nav-btn">个人中心</button>
       <button @click="onSave" :disabled="busy">保存</button>
       <button @click="onRun" :disabled="busy">{{ busy ? '运行中...' : '运行' }}</button>
     </div>
@@ -20,11 +22,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import EditorPane from '../components/EditorPane.vue'
 import OutputPane from '../components/OutputPane.vue'
 import HistoryList from '../components/HistoryList.vue'
 import { saveSnippet, runCode, listResults } from '../api/code'
 import { createExecutionWS } from '../utils/websocket'
+
+const router = useRouter()
 
 const code = ref("#include <stdio.h>\nint main(){ printf(\"Hello, World!\\n\"); return 0; }")
 const title = ref('Hello World')
@@ -66,6 +71,14 @@ onMounted(() => {
     }
   })
 })
+
+function goToCodeHistory() {
+  router.push('/code-history')
+}
+
+function goToProfile() {
+  router.push('/profile')
+}
 </script>
 
 <style scoped>
@@ -74,6 +87,8 @@ onMounted(() => {
 .spacer { flex:1; }
 input { padding:6px 8px; background:#0f0f0f; border:1px solid #333; color:#eee; border-radius:4px; min-width: 240px; }
 button { padding:8px 12px; background:#3b82f6; color:white; border:none; border-radius:4px; cursor:pointer; }
+.nav-btn { background:#444; margin-right:8px; }
+.nav-btn:hover { background:#555; }
 .main { flex:1; display:flex; min-height:0; }
 .left { flex: 2; min-width: 0; }
 .right { flex: 1; display:flex; flex-direction:column; min-width: 0; }
