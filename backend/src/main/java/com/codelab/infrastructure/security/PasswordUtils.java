@@ -25,15 +25,15 @@ public class PasswordUtils {
      * 使用盐对密码进行哈希
      */
     public String hashPassword(String rawPassword, String salt) {
-        String saltedPassword = rawPassword + salt;
-        return passwordEncoder.encode(saltedPassword);
+        // BCrypt 已经内置盐值处理，不需要额外添加盐值
+        return passwordEncoder.encode(rawPassword);
     }
     
     /**
      * 验证密码
      */
     public boolean verifyPassword(String rawPassword, String salt, String hashedPassword) {
-        String saltedPassword = rawPassword + salt;
-        return passwordEncoder.matches(saltedPassword, hashedPassword);
+        // BCrypt 验证时不需要额外处理盐值
+        return passwordEncoder.matches(rawPassword, hashedPassword);
     }
 }

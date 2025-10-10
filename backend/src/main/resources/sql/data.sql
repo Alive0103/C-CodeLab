@@ -5,7 +5,7 @@
 INSERT IGNORE INTO `user` (`id`, `username`, `password_hash`, `password_salt`, `email`, `role`, `enabled`) 
 VALUES 
 (1, 'Anonymous_Guest', '', '', '', 'ROLE_ANONYMOUS', TRUE),
-(2, 'admin', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8KzKz2K', 'dGVzdF9zYWx0XzEyMzQ1Njc4', 'admin@codelab.com', 'ROLE_USER', TRUE);
+(2, 'admin', '$2a$12$U.QHR4cHGWh9/UQGS9tQtO3x6E4DkkqCCzVv6ScfvWQ7hqaEUDRJO', 'dGVzdF9zYWx0XzEyMzQ1Njc4', 'admin@codelab.com', 'ROLE_USER', TRUE);
 
 -- 2. 插入示例代码片段（可选）
 INSERT IGNORE INTO `code_snippet` (`id`, `user_id`, `title`, `code_content`, `language`, `is_public`, `created_at`) 
