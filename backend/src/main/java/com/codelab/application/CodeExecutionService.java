@@ -114,7 +114,7 @@ public class CodeExecutionService {
             if (buffer.size() + n > maxSize) throw new IOException("输出超过最大限制（1MB）");
             buffer.write(chunk, 0, n);
         }
-        return buffer.toString(java.nio.charset.StandardCharsets.UTF_8);
+        return buffer.toString(StandardCharsets.UTF_8);
     }
 
     private boolean isWindows() {

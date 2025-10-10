@@ -2,15 +2,13 @@ package com.codelab.interfaces.web;
 
 import com.codelab.domain.CodeSnippet;
 import com.codelab.domain.User;
-import com.codelab.domain.repository.UserRepository;
 import com.codelab.application.CodeExecutionService;
 import com.codelab.application.CodeSnippetService;
 import com.codelab.interfaces.web.dto.RunCodeRequest;
 import com.codelab.interfaces.web.dto.SaveCodeRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,25 +18,42 @@ public class CodeController {
 
     private final CodeSnippetService snippetService;
     private final CodeExecutionService executionService;
-    private final UserRepository userRepository;
 
     @PostMapping("/save")
-    public ApiResponse<?> save(@Valid @RequestBody SaveCodeRequest req,
-                               @AuthenticationPrincipal UserDetails principal) {
-        Long userId = principal != null ? userRepository.findByUsername(principal.getUsername()).map(User::getId).orElse(null) : null;
-        CodeSnippet s = snippetService.saveSnippet(userId, req.getTitle(), req.getCodeContent(), req.getLanguage(), req.isPublic());
-        recordIdOnly r = new recordIdOnly(s.getId(), s.getTitle(), s.getCreatedAt().toString());
+    public ApiResponse<?> save(@Valid @RequestBody SaveCodeRequest req, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        CodeSnippet s = snippetService.saveSnippet(user.getId(), req.getTitle(), req.getCodeContent(), req.getLanguage(), req.isPublic());
+        RecordIdOnly r = new RecordIdOnly(s.getId(), s.getTitle(), s.getCreatedAt().toString());
         return ApiResponse.ok(r);
     }
 
     @PostMapping("/run")
-    public ApiResponse<?> run(@Valid @RequestBody RunCodeRequest req,
-                              @AuthenticationPrincipal UserDetails principal) {
-        Long userId = principal != null ? userRepository.findByUsername(principal.getUsername()).map(User::getId).orElse(null) : null;
-        return ApiResponse.ok(executionService.compileAndRun(req.getCode(), userId, req.getTitle()));
+    public ApiResponse<?> run(@Valid @RequestBody RunCodeRequest req, HttpSession session) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        return ApiResponse.ok(executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle()));
     }
 
-    private record recordIdOnly(Long id, String title, String createdAt) {}
+    private static class RecordIdOnly {
+        private final Long id;
+        private final String title;
+        private final String createdAt;
+        
+        public RecordIdOnly(Long id, String title, String createdAt) {
+            this.id = id;
+            this.title = title;
+            this.createdAt = createdAt;
+        }
+        
+        public Long getId() { return id; }
+        public String getTitle() { return title; }
+        public String getCreatedAt() { return createdAt; }
+    }
 }
 
 

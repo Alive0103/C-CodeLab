@@ -1,12 +1,18 @@
 server:
-  port: 8080
+  port: 8081
 
 spring:
   datasource:
-    url: jdbc:h2:mem:codelab;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: ''
+    url: jdbc:mysql://gateway01.ap-northeast-1.prod.aws.tidbcloud.com:4000/c_test?useSSL=true&requireSSL=true&serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: 2GtHVk27Cjofv3g.root
+    password: qBoQciGIrjAeB61a
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   jpa:
     hibernate:
       ddl-auto: update
@@ -14,14 +20,18 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
   jackson:
     serialization:
       write-dates-as-timestamps: false
-
-jwt:
-  secret: change-me-super-secret-key-please
-  access-expiration: 900000   # 15 min (ms)
-  refresh-expiration: 604800000 # 7 days (ms)
+  data:
+    redis:
+      password: Ln216812_
+      username: redisuser
+      host: redis-12019.crce178.ap-east-1-1.ec2.redns.redis-cloud.com
+      port: 12019
+      ssl:
+        enabled: true
 
 code:
   tempDir: ${java.io.tmpdir}/code-env
@@ -31,4 +41,4 @@ logging:
   level:
     root: INFO
     org.springframework.security: INFO
-
+    com.codelab: DEBUG

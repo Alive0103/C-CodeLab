@@ -2,10 +2,10 @@
 -- 注意：生产环境请修改默认密码和配置
 
 -- 1. 插入系统用户
-INSERT IGNORE INTO `user` (`id`, `username`, `password_hash`, `email`, `role`, `enabled`) 
+INSERT IGNORE INTO `user` (`id`, `username`, `password_hash`, `password_salt`, `email`, `role`, `enabled`) 
 VALUES 
-(1, 'Anonymous_Guest', '', '', 'ROLE_ANONYMOUS', TRUE),
-(2, 'admin', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8KzKz2K', 'admin@codelab.com', 'ROLE_USER', TRUE);
+(1, 'Anonymous_Guest', '', '', '', 'ROLE_ANONYMOUS', TRUE),
+(2, 'admin', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8KzKz2K', 'dGVzdF9zYWx0XzEyMzQ1Njc4', 'admin@codelab.com', 'ROLE_USER', TRUE);
 
 -- 2. 插入示例代码片段（可选）
 INSERT IGNORE INTO `code_snippet` (`id`, `user_id`, `title`, `code_content`, `language`, `is_public`, `created_at`) 
