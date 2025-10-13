@@ -1,11 +1,14 @@
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\domain\User.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\domain\repository\ExecutionRecordRepository.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\infrastructure\config\AsyncConfig.java
+D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\web\UserProfileController.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\web\dto\RunCodeRequest.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\CCodeLabApplication.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\application\CodeSnippetService.java
+D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\web\UserCodeController.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\web\ApiResponse.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\domain\ExecutionRecord.java
+D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\web\dto\ChangePasswordRequest.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\infrastructure\config\RedisConfig.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\web\dto\SaveCodeRequest.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\application\CodeExecutionService.java
@@ -18,6 +21,7 @@ D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\web\C
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\domain\repository\UserRepository.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\ws\ExecutionWebSocketHandler.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\web\dto\LoginRequest.java
+D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\web\dto\UpdateProfileRequest.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\domain\CodeSnippet.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\interfaces\web\GlobalExceptionHandler.java
 D:\代码集合\codelab\C-CodeLab\backend\src\main\java\com\codelab\domain\repository\CodeSnippetRepository.java

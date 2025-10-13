@@ -3,6 +3,9 @@ com\codelab\interfaces\web\CodeController.class
 com\codelab\application\CodeExecutionService$CompilationResult.class
 com\codelab\application\RedisTestService.class
 com\codelab\domain\repository\ExecutionRecordRepository.class
+com\codelab\interfaces\web\dto\UpdateProfileRequest.class
+com\codelab\interfaces\web\UserProfileController.class
+com\codelab\infrastructure\config\WebSocketConfig$1.class
 com\codelab\infrastructure\config\WebSocketConfig.class
 com\codelab\interfaces\web\dto\LoginRequest.class
 com\codelab\infrastructure\config\SecurityConfig.class
@@ -13,6 +16,8 @@ com\codelab\interfaces\web\AuthController.class
 com\codelab\domain\ExecutionRecord.class
 com\codelab\infrastructure\config\RedisConfig.class
 com\codelab\interfaces\web\ApiResponse.class
+com\codelab\interfaces\web\dto\ChangePasswordRequest.class
+com\codelab\interfaces\web\UserCodeController.class
 com\codelab\application\CodeExecutionService$ExecutionResult.class
 com\codelab\application\CodeExecutionService.class
 com\codelab\interfaces\web\dto\RunCodeRequest.class
