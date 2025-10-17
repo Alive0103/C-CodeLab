@@ -1,35 +1,37 @@
 package com.codelab.interfaces.web;
 
+import com.codelab.infrastructure.security.JwtTokenUtils;
+import com.codelab.service.UserService;
 import com.codelab.domain.User;
-import com.codelab.domain.repository.UserRepository;
+import com.codelab.infrastructure.common.ApiResponseCode;
 import com.codelab.infrastructure.security.PasswordUtils;
 import com.codelab.interfaces.web.dto.ChangePasswordRequest;
 import com.codelab.interfaces.web.dto.UpdateProfileRequest;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
 public class UserProfileController {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final PasswordUtils passwordUtils;
+    private final JwtTokenUtils jwtTokenUtils;
+    private final RedisTemplate redisTemplate;
 
     /**
      * 获取当前用户信息
      */
     @GetMapping("/profile")
-    public ApiResponse<User> getProfile(HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            return ApiResponse.error(401, "未登录");
-        }
-        return ApiResponse.ok(user);
+    public ApiResponse<User> getProfile(Authentication authentication) {
+        String username = authentication.getName();
+        User currentUser = userService.getCurrentUser(username);
+        return ApiResponse.ok(currentUser);
     }
 
     /**
@@ -38,33 +40,19 @@ public class UserProfileController {
     @PutMapping("/profile")
     public ApiResponse<String> updateProfile(
             @Valid @RequestBody UpdateProfileRequest request,
-            HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            return ApiResponse.error(401, "未登录");
-        }
-
-        // 获取最新的用户信息
-        Optional<User> userOpt = userRepository.findById(user.getId());
-        if (userOpt.isEmpty()) {
-            return ApiResponse.error(404, "用户不存在");
-        }
-
-        User currentUser = userOpt.get();
-        
+            Authentication authentication) {
+        String username = authentication.getName();
+        User currentUser = userService.getCurrentUser(username);
         // 更新邮箱（如果提供了且不重复）
         if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
             if (!request.getEmail().equals(currentUser.getEmail()) && 
-                userRepository.existsByEmail(request.getEmail())) {
-                return ApiResponse.error(400, "邮箱已被使用");
+                userService.existsByEmail(request.getEmail())) {
+                return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "邮箱已被使用");
             }
             currentUser.setEmail(request.getEmail());
         }
 
-        userRepository.save(currentUser);
-        
-        // 更新session中的用户信息
-        session.setAttribute("user", currentUser);
+        userService.updateUser(currentUser);
         
         return ApiResponse.ok("更新成功");
     }
@@ -73,26 +61,16 @@ public class UserProfileController {
      * 修改密码
      */
     @PutMapping("/password")
-    public ApiResponse<String> changePassword(
-            @Valid @RequestBody ChangePasswordRequest request,
-            HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            return ApiResponse.error(401, "未登录");
-        }
+    public ApiResponse<String> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+            HttpServletRequest httpRequest, Authentication authentication) {
 
-        // 获取最新的用户信息
-        Optional<User> userOpt = userRepository.findById(user.getId());
-        if (userOpt.isEmpty()) {
-            return ApiResponse.error(404, "用户不存在");
-        }
+        String username = authentication.getName();
+        User currentUser = userService.getCurrentUser(username);
 
-        User currentUser = userOpt.get();
-        
         // 验证旧密码
-        if (!passwordUtils.verifyPassword(request.getOldPassword(), 
+        if (!passwordUtils.verifyPassword(request.getOldPassword(),
                 currentUser.getPasswordSalt(), currentUser.getPasswordHash())) {
-            return ApiResponse.error(400, "原密码错误");
+            return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "旧密码不正确");
         }
 
         // 更新密码
@@ -101,8 +79,11 @@ public class UserProfileController {
         currentUser.setPasswordHash(hashedPassword);
         currentUser.setPasswordSalt(salt);
 
-        userRepository.save(currentUser);
-        
+        userService.save(currentUser);
+        // 清除该用户的所有有效token，强制重新登录
+        String userTokensKey = "user_tokens:" + username;
+        redisTemplate.delete(userTokensKey);
         return ApiResponse.ok("密码修改成功");
     }
+
 }

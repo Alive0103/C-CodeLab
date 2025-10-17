@@ -1,5 +1,6 @@
 package com.codelab.interfaces.web;
 
+import com.codelab.service.UserService;
 import com.codelab.domain.User;
 import com.codelab.application.AuthService;
 import com.codelab.interfaces.web.dto.LoginRequest;
@@ -7,6 +8,7 @@ import com.codelab.interfaces.web.dto.RegisterRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,33 +17,21 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserService userService;
 
     @PostMapping("/auth/register")
     public ApiResponse<String> register(@Valid @RequestBody RegisterRequest req) {
-        authService.register(req.getUsername(), req.getPassword(), req.getEmail());
-        return ApiResponse.ok("注册成功");
+        return authService.register(req.getUsername(), req.getPassword(), req.getEmail());
     }
 
     @PostMapping("/auth/login")
-    public ApiResponse<User> login(@Valid @RequestBody LoginRequest req, HttpSession session) {
-        User user = authService.authenticate(req.getUsername(), req.getPassword());
-        session.setAttribute("user", user);
-        return ApiResponse.ok(user);
+    public ApiResponse<String> login(@Valid @RequestBody LoginRequest req, HttpSession session) {
+        return authService.authenticate(req.getUsername(), req.getPassword());
     }
 
     @PostMapping("/auth/logout")
     public ApiResponse<String> logout(HttpSession session) {
-        session.invalidate();
         return ApiResponse.ok("登出成功");
-    }
-
-    @GetMapping("/user")
-    public ApiResponse<?> currentUser(HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            return ApiResponse.error(401, "未登录");
-        }
-        return ApiResponse.ok(user);
     }
 }
 
