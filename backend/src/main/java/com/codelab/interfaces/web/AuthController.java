@@ -5,7 +5,6 @@ import com.codelab.domain.User;
 import com.codelab.application.AuthService;
 import com.codelab.interfaces.web.dto.LoginRequest;
 import com.codelab.interfaces.web.dto.RegisterRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -25,12 +24,12 @@ public class AuthController {
     }
 
     @PostMapping("/auth/login")
-    public ApiResponse<String> login(@Valid @RequestBody LoginRequest req, HttpSession session) {
+    public ApiResponse<String> login(@Valid @RequestBody LoginRequest req) {
         return authService.authenticate(req.getUsername(), req.getPassword());
     }
 
     @PostMapping("/auth/logout")
-    public ApiResponse<String> logout(HttpSession session) {
+    public ApiResponse<String> logout() {
         return ApiResponse.ok("登出成功");
     }
 }

@@ -35,7 +35,8 @@ public class CodeController {
     public ApiResponse<?> run(@Valid @RequestBody RunCodeRequest req, HttpServletRequest request,Authentication authentication) {
         String username = authentication.getName();
         User user = userService.getCurrentUser(username);
-        return ApiResponse.ok(executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle()));
+        // 确保返回的数据格式正确
+        return ApiResponse.ok(executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle()).join());
     }
 
     private static class RecordIdOnly {

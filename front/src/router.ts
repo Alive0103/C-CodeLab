@@ -26,18 +26,27 @@ router.beforeEach(async (to) => {
   
   if (protectedRoutes.includes(to.path)) {
     const auth = useAuthStore()
+    const token = localStorage.getItem('token')
+    
+    // 如果没有token，重定向到登录页
+    if (!token) {
+      return '/login'
+    }
+    
     // 如果store中没有用户信息，尝试获取
     if (!auth.user) {
       try {
-        const { getUser } = await import('./api/auth')
-        const res = await getUser()
+        const { http } = await import('./api/http')
+        const res = await http.get('/user')
         if (res.data.data) {
           auth.setUser(res.data.data)
         } else {
+          localStorage.removeItem('token')
           return '/login'
         }
       } catch (err) {
         console.error('获取用户信息失败:', err)
+        localStorage.removeItem('token')
         return '/login'
       }
     }

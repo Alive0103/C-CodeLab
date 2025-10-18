@@ -35,6 +35,16 @@ public class UserProfileController {
     }
 
     /**
+     * 获取当前用户基本信息（简化版）
+     */
+    @GetMapping
+    public ApiResponse<User> getCurrentUser(Authentication authentication) {
+        String username = authentication.getName();
+        User currentUser = userService.getCurrentUser(username);
+        return ApiResponse.ok(currentUser);
+    }
+
+    /**
      * 更新用户基本信息
      */
     @PutMapping("/profile")
