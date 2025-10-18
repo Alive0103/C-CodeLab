@@ -33,13 +33,12 @@ public class AuthService {
             return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "用户名已被使用");
         }
         
-        String salt = passwordUtils.generateSalt();
-        String hashedPassword = passwordUtils.hashPassword(rawPassword, salt);
+        String hashedPassword = passwordUtils.hashPassword(rawPassword, null);
         
         User u = new User();
         u.setUsername(username);
         u.setPasswordHash(hashedPassword);
-        u.setPasswordSalt(salt);
+        u.setPasswordSalt(""); // BCrypt handles salt internally
         u.setEmail(email);
         u.setRole("ROLE_USER");
         u.setEnabled(true);

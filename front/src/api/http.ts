@@ -65,8 +65,18 @@ http.interceptors.response.use(
       isRefreshing = true
 
       try {
-        // 尝试刷新token
-        const refreshResponse = await http.post('/auth/refresh')
+        // 获取当前token（可能是过期的）
+        const currentToken = localStorage.getItem('token')
+        if (!currentToken) {
+          throw new Error('No token available for refresh')
+        }
+
+        // 尝试刷新token，发送当前token（即使过期）
+        const refreshResponse = await http.post('/auth/refresh', {}, {
+          headers: {
+            Authorization: currentToken
+          }
+        })
         const newToken = refreshResponse.data.data
         
         if (newToken) {

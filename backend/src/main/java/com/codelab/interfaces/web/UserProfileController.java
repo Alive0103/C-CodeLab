@@ -84,10 +84,9 @@ public class UserProfileController {
         }
 
         // 更新密码
-        String salt = passwordUtils.generateSalt();
-        String hashedPassword = passwordUtils.hashPassword(request.getNewPassword(), salt);
+        String hashedPassword = passwordUtils.hashPassword(request.getNewPassword(), null);
         currentUser.setPasswordHash(hashedPassword);
-        currentUser.setPasswordSalt(salt);
+        currentUser.setPasswordSalt(""); // BCrypt handles salt internally
 
         userService.save(currentUser);
         // 清除该用户的所有有效token，强制重新登录
