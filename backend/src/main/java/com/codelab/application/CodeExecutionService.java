@@ -38,44 +38,41 @@ public class CodeExecutionService {
     private static final int RUN_TIMEOUT = 5; // seconds
     private static final int MAX_OUTPUT_SIZE = 1024 * 1024; // 1MB
 
-    @Async
-    public CompletableFuture<ExecutionResult> compileAndRun(String code, Long userId, String title) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                if (code == null || code.length() > 10 * 1024) {
-                    return ExecutionResult.systemError("代码长度超过限制（最大10KB）");
-                }
-                Files.createDirectories(Paths.get(tempDir));
-                String randomId = UUID.randomUUID().toString().substring(0, 8);
-                Path src = Paths.get(tempDir, "code_" + randomId + ".c");
-                Path exe = Paths.get(tempDir, "program_" + randomId + (isWindows() ? ".exe" : ""));
-                Files.write(src, code.getBytes(StandardCharsets.UTF_8));
-
-                CompilationResult cr = compileCode(src, exe);
-                if (!cr.success) {
-                    return ExecutionResult.compilationError(cr.error);
-                }
-
-                ExecutionResult rr = runProgram(exe);
-
-                if (userId != null) {
-                    ExecutionRecord record = new ExecutionRecord();
-                    User u = new User();
-                    u.setId(userId);
-                    record.setUser(u);
-                    record.setTitle(title);
-                    record.setCode(code);
-                    record.setOutput(rr.output);
-                    record.setError(rr.success ? "" : rr.output);
-                    record.setExitCode(rr.success ? 0 : 1);
-                    recordRepository.save(record);
-                }
-
-                return rr;
-            } catch (Exception e) {
-                return ExecutionResult.systemError("执行失败：" + e.getMessage());
+    public ExecutionResult compileAndRun(String code, Long userId, String title) {
+        try {
+            if (code == null || code.length() > 10 * 1024) {
+                return ExecutionResult.systemError("代码长度超过限制（最大10KB）");
             }
-        });
+            Files.createDirectories(Paths.get(tempDir));
+            String randomId = UUID.randomUUID().toString().substring(0, 8);
+            Path src = Paths.get(tempDir, "code_" + randomId + ".c");
+            Path exe = Paths.get(tempDir, "program_" + randomId + (isWindows() ? ".exe" : ""));
+            Files.write(src, code.getBytes(StandardCharsets.UTF_8));
+
+            CompilationResult cr = compileCode(src, exe);
+            if (!cr.success) {
+                return ExecutionResult.compilationError(cr.error);
+            }
+
+            ExecutionResult rr = runProgram(exe);
+
+            if (userId != null) {
+                ExecutionRecord record = new ExecutionRecord();
+                User u = new User();
+                u.setId(userId);
+                record.setUser(u);
+                record.setTitle(title);
+                record.setCode(code);
+                record.setOutput(rr.output);
+                record.setError(rr.success ? "" : rr.output);
+                record.setExitCode(rr.success ? 0 : 1);
+                recordRepository.save(record);
+            }
+
+            return rr;
+        } catch (Exception e) {
+            return ExecutionResult.systemError("执行失败：" + e.getMessage());
+        }
     }
 
     private CompilationResult compileCode(Path src, Path exe) throws IOException, InterruptedException {

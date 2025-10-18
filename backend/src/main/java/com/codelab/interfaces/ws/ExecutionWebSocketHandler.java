@@ -1,6 +1,8 @@
 package com.codelab.interfaces.ws;
 
 import com.codelab.domain.User;
+import com.codelab.infrastructure.security.JwtTokenUtils;
+import com.codelab.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -16,18 +18,36 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ExecutionWebSocketHandler extends TextWebSocketHandler {
 
     private final Map<Long, WebSocketSession> sessionsByUser = new ConcurrentHashMap<>();
+    private final JwtTokenUtils jwtTokenUtils;
+    private final UserService userService;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        // 从会话属性中获取用户信息
-        Object userObj = session.getAttributes().get("user");
-        if (userObj == null || !(userObj instanceof User)) {
-            log.warn("WS unauthorized connection - no user in session");
+        // 从URL参数中获取token
+        String tokenValue = getTokenFromQuery(session.getUri().getQuery());
+        if (tokenValue == null) {
+            log.warn("WS unauthorized connection - no token in URL");
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
             return;
         }
         
-        User user = (User) userObj;
+        // 验证token
+        if (!jwtTokenUtils.validateToken(tokenValue)) {
+            log.warn("WS unauthorized connection - invalid token");
+            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Invalid token"));
+            return;
+        }
+        
+        // 从token中获取用户名
+        String username = jwtTokenUtils.getUsernameFromToken(tokenValue);
+        User user = userService.findByUsername(username).orElse(null);
+        
+        if (user == null) {
+            log.warn("WS unauthorized connection - user not found: {}", username);
+            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("User not found"));
+            return;
+        }
+        
         sessionsByUser.put(user.getId(), session);
         log.info("WS connected: {}", user.getUsername());
     }
@@ -44,5 +64,25 @@ public class ExecutionWebSocketHandler extends TextWebSocketHandler {
                 s.sendMessage(new TextMessage(message));
             } catch (Exception ignored) {}
         }
+    }
+    
+    /**
+     * 从查询字符串中提取token参数
+     * 支持多个参数的情况，如: token=abc123&other=value
+     */
+    private String getTokenFromQuery(String query) {
+        if (query == null || query.isEmpty()) {
+            return null;
+        }
+        
+        // 解析查询参数
+        String[] params = query.split("&");
+        for (String param : params) {
+            if (param.startsWith("token=")) {
+                return param.substring(6); // 移除 "token=" 前缀
+            }
+        }
+        
+        return null;
     }
 }

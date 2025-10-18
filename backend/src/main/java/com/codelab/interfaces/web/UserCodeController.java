@@ -1,16 +1,19 @@
 package com.codelab.interfaces.web;
 
 import com.codelab.application.CodeSnippetService;
+import com.codelab.service.UserService;
 import com.codelab.domain.CodeSnippet;
 import com.codelab.domain.ExecutionRecord;
 import com.codelab.domain.User;
 import com.codelab.domain.repository.ExecutionRecordRepository;
-import jakarta.servlet.http.HttpSession;
+import com.codelab.infrastructure.common.ApiResponseCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,22 +25,31 @@ public class UserCodeController {
 
     private final CodeSnippetService codeSnippetService;
     private final ExecutionRecordRepository executionRecordRepository;
+    private final UserService userService;
+
+    /**
+     * 从SecurityContext获取当前用户名
+     */
+    private String getCurrentUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            return authentication.getName();
+        }
+        throw new IllegalStateException("用户未认证");
+    }
 
     /**
      * 获取当前用户的代码片段列表
      */
     @GetMapping("/code-snippets")
-    public ApiResponse<List<CodeSnippet>> getMyCodeSnippets(
-            HttpSession session,
+    public ApiResponse<Page<CodeSnippet>> getMyCodeSnippets(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            return ApiResponse.error(401, "未登录");
-        }
-
+        String username = getCurrentUsername();
+        User user = userService.getCurrentUser(username);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        List<CodeSnippet> snippets = codeSnippetService.listRecent(user.getId());
+        // 使用Pageable进行分页查询
+        Page<CodeSnippet> snippets = codeSnippetService.listRecent(user.getId(), pageable);
         return ApiResponse.ok(snippets);
     }
 
@@ -46,14 +58,10 @@ public class UserCodeController {
      */
     @GetMapping("/execution-records")
     public ApiResponse<Page<ExecutionRecord>> getMyExecutionRecords(
-            HttpSession session,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            return ApiResponse.error(401, "未登录");
-        }
-
+        String username = getCurrentUsername();
+        User user = userService.getCurrentUser(username);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<ExecutionRecord> records = executionRecordRepository.findByUserId(user.getId(), pageable);
         return ApiResponse.ok(records);
@@ -63,13 +71,20 @@ public class UserCodeController {
      * 删除代码片段
      */
     @DeleteMapping("/code-snippets/{id}")
-    public ApiResponse<String> deleteCodeSnippet(@PathVariable Long id, HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            return ApiResponse.error(401, "未登录");
+    public ApiResponse<String> deleteCodeSnippet(@PathVariable Long id) {
+        String username = getCurrentUsername();
+        User user = userService.getCurrentUser(username);
+        
+        // 验证代码片段是否属于当前用户
+        CodeSnippet snippet = codeSnippetService.findById(id);
+        if (snippet == null) {
+            return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "代码片段不存在");
         }
-
-        // 这里需要添加删除逻辑，确保只能删除自己的代码片段
+        if (!snippet.getUser().getId().equals(user.getId())) {
+            return ApiResponse.error(ApiResponseCode.FORBIDDEN, "无权限删除此代码片段");
+        }
+        
+        codeSnippetService.deleteById(id);
         return ApiResponse.ok("删除成功");
     }
 
@@ -77,13 +92,20 @@ public class UserCodeController {
      * 删除执行记录
      */
     @DeleteMapping("/execution-records/{id}")
-    public ApiResponse<String> deleteExecutionRecord(@PathVariable Long id, HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            return ApiResponse.error(401, "未登录");
+    public ApiResponse<String> deleteExecutionRecord(@PathVariable Long id) {
+        String username = getCurrentUsername();
+        User user = userService.getCurrentUser(username);
+        
+        // 验证执行记录是否属于当前用户
+        ExecutionRecord record = executionRecordRepository.findById(id).orElse(null);
+        if (record == null) {
+            return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "执行记录不存在");
         }
-
-        // 这里需要添加删除逻辑，确保只能删除自己的执行记录
+        if (!record.getUser().getId().equals(user.getId())) {
+            return ApiResponse.error(ApiResponseCode.FORBIDDEN, "无权限删除此执行记录");
+        }
+        
+        executionRecordRepository.deleteById(id);
         return ApiResponse.ok("删除成功");
     }
 }

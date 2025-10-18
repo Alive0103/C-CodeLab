@@ -1,9 +1,10 @@
 <template>
   <router-view />
-  
+  <AuthErrorHandler />
 </template>
 
 <script setup lang="ts">
+import AuthErrorHandler from './components/AuthErrorHandler.vue'
 </script>
 
 <style>

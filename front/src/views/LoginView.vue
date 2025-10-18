@@ -19,6 +19,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { login } from '../api/auth'
+import { getUserProfile } from '../api/user'
 
 const router = useRouter()
 const route = useRoute()
@@ -42,10 +43,13 @@ async function doLogin() {
   loading.value = true
   try {
     const res = await login({ username: username.value, password: password.value })
-    const user = res.data.data
-    if (user) {
-      // 后端使用session管理，存储用户信息到store
-      auth.setUser(user)
+    const token = res.data.data
+    if (token) {
+      // 存储JWT token到localStorage（确保包含Bearer前缀）
+      localStorage.setItem('token', token)
+      // 获取用户信息并存储到store
+      const userRes = await getUserProfile()
+      auth.setUser(userRes.data.data)
       router.push('/editor')
     } else {
       error.value = '登录失败'

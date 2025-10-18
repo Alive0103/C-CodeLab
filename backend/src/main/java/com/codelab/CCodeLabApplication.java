@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class CCodeLabApplication {
     public static void main(String[] args) {
         SpringApplication.run(CCodeLabApplication.class, args);
+        System.out.println("start....");
     }
 }
 

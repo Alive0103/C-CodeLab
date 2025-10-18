@@ -25,6 +25,7 @@ public class PasswordUtils {
     
     /**
      * 使用盐对密码进行哈希
+     * 注意：BCrypt 已经内置盐值处理，salt 参数被忽略
      */
     public String hashPassword(String rawPassword, String salt) {
         // BCrypt 已经内置盐值处理，不需要额外添加盐值

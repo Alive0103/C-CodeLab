@@ -5,6 +5,8 @@ import com.codelab.domain.User;
 import com.codelab.domain.repository.CodeSnippetRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,17 @@ public class CodeSnippetService {
     public List<CodeSnippet> listRecent(Long userId) {
         return snippetRepository.findTop50ByUserIdOrderByCreatedAtDesc(userId);
     }
+    
+    public Page<CodeSnippet> listRecent(Long userId, Pageable pageable) {
+        return snippetRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+    }
+
+    public CodeSnippet findById(Long id) {
+        return snippetRepository.findById(id).orElse(null);
+    }
+
+    @Transactional
+    public void deleteById(Long id) {
+        snippetRepository.deleteById(id);
+    }
 }
-
-
