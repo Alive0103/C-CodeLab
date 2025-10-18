@@ -1,5 +1,6 @@
 package com.codelab.interfaces.ws;
 
+import com.codelab.domain.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -14,19 +15,21 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class ExecutionWebSocketHandler extends TextWebSocketHandler {
 
-    private final Map<String, WebSocketSession> sessionsByUser = new ConcurrentHashMap<>();
+    private final Map<Long, WebSocketSession> sessionsByUser = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        // 简化认证：直接允许连接，实际项目中可以通过session参数传递用户信息
-        String username = session.getUri().getQuery();
-        if (username == null || username.isEmpty()) {
-            log.warn("WS unauthorized connection - no username provided");
+        // 从会话属性中获取用户信息
+        Object userObj = session.getAttributes().get("user");
+        if (userObj == null || !(userObj instanceof User)) {
+            log.warn("WS unauthorized connection - no user in session");
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
             return;
         }
-        sessionsByUser.put(username, session);
-        log.info("WS connected: {}", username);
+        
+        User user = (User) userObj;
+        sessionsByUser.put(user.getId(), session);
+        log.info("WS connected: {}", user.getUsername());
     }
 
     @Override
@@ -34,8 +37,8 @@ public class ExecutionWebSocketHandler extends TextWebSocketHandler {
         sessionsByUser.entrySet().removeIf(e -> e.getValue().getId().equals(session.getId()));
     }
 
-    public void pushToUser(String username, String message) {
-        WebSocketSession s = sessionsByUser.get(username);
+    public void pushToUser(Long userId, String message) {
+        WebSocketSession s = sessionsByUser.get(userId);
         if (s != null && s.isOpen()) {
             try {
                 s.sendMessage(new TextMessage(message));
@@ -43,5 +46,3 @@ public class ExecutionWebSocketHandler extends TextWebSocketHandler {
         }
     }
 }
-
-
