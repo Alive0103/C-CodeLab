@@ -35,6 +35,15 @@ public class CodeSnippetService {
     public List<CodeSnippet> listRecent(Long userId) {
         return snippetRepository.findTop50ByUserIdOrderByCreatedAtDesc(userId);
     }
+
+    public CodeSnippet findById(Long id) {
+        return snippetRepository.findById(id).orElse(null);
+    }
+
+    @Transactional
+    public void deleteById(Long id) {
+        snippetRepository.deleteById(id);
+    }
 }
 
 

@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/code")
@@ -32,11 +33,12 @@ public class CodeController {
     }
 
     @PostMapping("/run")
-    public ApiResponse<?> run(@Valid @RequestBody RunCodeRequest req, HttpServletRequest request,Authentication authentication) {
+    public CompletableFuture<ApiResponse<?>> run(@Valid @RequestBody RunCodeRequest req, HttpServletRequest request, Authentication authentication) {
         String username = authentication.getName();
         User user = userService.getCurrentUser(username);
-        // 确保返回的数据格式正确
-        return ApiResponse.ok(executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle()).join());
+        // 返回 CompletableFuture 而不是阻塞等待结果
+        return executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle())
+                .thenApply(ApiResponse::ok);
     }
 
     private static class RecordIdOnly {

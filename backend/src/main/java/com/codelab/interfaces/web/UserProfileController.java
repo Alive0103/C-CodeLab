@@ -79,7 +79,7 @@ public class UserProfileController {
 
         // 验证旧密码
         if (!passwordUtils.verifyPassword(request.getOldPassword(),
-                currentUser.getPasswordSalt(), currentUser.getPasswordHash())) {
+                currentUser.getPasswordHash())) {
             return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "旧密码不正确");
         }
 

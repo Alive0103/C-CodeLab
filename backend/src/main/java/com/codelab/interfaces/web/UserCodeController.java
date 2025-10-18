@@ -12,6 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,6 +28,17 @@ public class UserCodeController {
     private final UserService userService;
 
     /**
+     * 从SecurityContext获取当前用户名
+     */
+    private String getCurrentUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            return authentication.getName();
+        }
+        throw new IllegalStateException("用户未认证");
+    }
+
+    /**
      * 获取当前用户的代码片段列表
      */
     @GetMapping("/code-snippets")
@@ -33,7 +46,7 @@ public class UserCodeController {
             HttpServletRequest request,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        String username = (String) request.getAttribute("username");
+        String username = getCurrentUsername();
         User user = userService.getCurrentUser(username);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         List<CodeSnippet> snippets = codeSnippetService.listRecent(user.getId());
@@ -48,7 +61,7 @@ public class UserCodeController {
             HttpServletRequest request,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        String username = (String) request.getAttribute("username");
+        String username = getCurrentUsername();
         User user = userService.getCurrentUser(username);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<ExecutionRecord> records = executionRecordRepository.findByUserId(user.getId(), pageable);
@@ -59,8 +72,20 @@ public class UserCodeController {
      * 删除代码片段
      */
     @DeleteMapping("/code-snippets/{id}")
-    public ApiResponse<String> deleteCodeSnippet(@PathVariable Long id,HttpServletRequest request) {
-        // todo 这里需要添加删除逻辑，确保只能删除自己的代码片段
+    public ApiResponse<String> deleteCodeSnippet(@PathVariable Long id, HttpServletRequest request) {
+        String username = getCurrentUsername();
+        User user = userService.getCurrentUser(username);
+        
+        // 验证代码片段是否属于当前用户
+        CodeSnippet snippet = codeSnippetService.findById(id);
+        if (snippet == null) {
+            return ApiResponse.error("代码片段不存在");
+        }
+        if (!snippet.getUser().getId().equals(user.getId())) {
+            return ApiResponse.error("无权限删除此代码片段");
+        }
+        
+        codeSnippetService.deleteById(id);
         return ApiResponse.ok("删除成功");
     }
 
@@ -69,7 +94,19 @@ public class UserCodeController {
      */
     @DeleteMapping("/execution-records/{id}")
     public ApiResponse<String> deleteExecutionRecord(@PathVariable Long id, HttpServletRequest request) {
-        // todo 这里需要添加删除逻辑，确保只能删除自己的执行记录
+        String username = getCurrentUsername();
+        User user = userService.getCurrentUser(username);
+        
+        // 验证执行记录是否属于当前用户
+        ExecutionRecord record = executionRecordRepository.findById(id).orElse(null);
+        if (record == null) {
+            return ApiResponse.error("执行记录不存在");
+        }
+        if (!record.getUser().getId().equals(user.getId())) {
+            return ApiResponse.error("无权限删除此执行记录");
+        }
+        
+        executionRecordRepository.deleteById(id);
         return ApiResponse.ok("删除成功");
     }
 }

@@ -29,7 +29,7 @@ public class JwtTokenUtils {
      */
     public String generateToken(String username) {
         long nowMillis = System.currentTimeMillis();
-        long expMillis = nowMillis + jwtConfig.getExpiration() * 1000;
+        long expMillis = nowMillis + jwtConfig.getExpiration();
 
         return Jwts.builder()
                 .setSubject(username)
