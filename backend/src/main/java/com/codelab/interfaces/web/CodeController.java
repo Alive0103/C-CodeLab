@@ -36,7 +36,13 @@ public class CodeController {
         if (user == null) {
             return ApiResponse.error(401, "未登录");
         }
-        return ApiResponse.ok(executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle()));
+        try {
+            // 等待异步执行完成并返回结果
+            var result = executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle()).get();
+            return ApiResponse.ok(result);
+        } catch (Exception e) {
+            return ApiResponse.error(500, "代码执行失败：" + e.getMessage());
+        }
     }
 
     private static class RecordIdOnly {

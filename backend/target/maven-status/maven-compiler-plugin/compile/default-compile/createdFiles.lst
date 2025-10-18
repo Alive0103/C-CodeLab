@@ -20,6 +20,7 @@ com\codelab\interfaces\web\dto\ChangePasswordRequest.class
 com\codelab\interfaces\web\UserCodeController.class
 com\codelab\application\CodeExecutionService$ExecutionResult.class
 com\codelab\application\CodeExecutionService.class
+com\codelab\infrastructure\config\SecurityConfig$1.class
 com\codelab\interfaces\web\dto\RunCodeRequest.class
 com\codelab\CCodeLabApplication.class
 com\codelab\interfaces\web\ResultController.class

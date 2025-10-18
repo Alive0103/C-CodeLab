@@ -1,7 +1,10 @@
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 
-export const http = axios.create({ baseURL: '/api' })
+export const http = axios.create({ 
+  baseURL: '/api',
+  withCredentials: true
+})
 
 http.interceptors.response.use(
   (res) => res,
