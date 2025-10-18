@@ -67,6 +67,34 @@ public class JwtTokenUtils {
     }
 
     /**
+     * 从token中提取用户名（忽略过期时间，用于刷新场景）
+     * @param token
+     * @return
+     */
+    public String getUsernameFromTokenIgnoringExpiration(String token) {
+        try {
+            String cleanToken = cleanToken(token);
+            if (cleanToken == null || cleanToken.isEmpty()) {
+                throw new IllegalArgumentException("Token is empty or null");
+            }
+
+            // 解析token但不验证过期时间
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(jwtConfig.getSigningKey())
+                    .build()
+                    .parseClaimsJws(cleanToken)
+                    .getBody();
+            
+            String username = claims.getSubject();
+            log.debug("Parsed username from token (ignoring expiration): {}", username);
+            return username;
+        } catch (Exception e) {
+            log.error("Failed to parse username from token (ignoring expiration): {}", token, e);
+            throw e;
+        }
+    }
+
+    /**
      *  验证token的有效性
      * @param token
      * @return
@@ -94,6 +122,38 @@ public class JwtTokenUtils {
             return false;
         } catch (Exception e) {
             log.error("Token validation failed", e);
+            return false;
+        }
+    }
+
+    /**
+     * 验证token用于刷新目的（忽略过期时间，只验证签名和用户存在性）
+     * @param token
+     * @return
+     */
+    public boolean validateTokenForRefresh(String token) {
+        try {
+            String cleanToken = cleanToken(token);
+            
+            // 获取token中的用户名（忽略过期时间）
+            String username = getUsernameFromTokenIgnoringExpiration(cleanToken);
+            
+            // 检查该用户当前有效的token中是否包含此token
+            String userTokensKey = "user_tokens:" + username;
+            Boolean isMember = redisTemplate.opsForSet().isMember(userTokensKey, cleanToken);
+            
+            if (Boolean.TRUE.equals(isMember)) {
+                // 只验证token签名，忽略过期时间
+                Jwts.parserBuilder()
+                        .setSigningKey(jwtConfig.getSigningKey())
+                        .build()
+                        .parseClaimsJws(cleanToken);
+                return true;
+            }
+            
+            return false;
+        } catch (Exception e) {
+            log.error("Token validation for refresh failed", e);
             return false;
         }
     }

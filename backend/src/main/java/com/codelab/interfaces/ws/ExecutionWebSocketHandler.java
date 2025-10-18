@@ -24,15 +24,12 @@ public class ExecutionWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         // 从URL参数中获取token
-        String token = session.getUri().getQuery();
-        if (token == null || !token.startsWith("token=")) {
+        String tokenValue = getTokenFromQuery(session.getUri().getQuery());
+        if (tokenValue == null) {
             log.warn("WS unauthorized connection - no token in URL");
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
             return;
         }
-        
-        // 提取token值
-        String tokenValue = token.substring(6); // 移除 "token=" 前缀
         
         // 验证token
         if (!jwtTokenUtils.validateToken(tokenValue)) {
@@ -67,5 +64,25 @@ public class ExecutionWebSocketHandler extends TextWebSocketHandler {
                 s.sendMessage(new TextMessage(message));
             } catch (Exception ignored) {}
         }
+    }
+    
+    /**
+     * 从查询字符串中提取token参数
+     * 支持多个参数的情况，如: token=abc123&other=value
+     */
+    private String getTokenFromQuery(String query) {
+        if (query == null || query.isEmpty()) {
+            return null;
+        }
+        
+        // 解析查询参数
+        String[] params = query.split("&");
+        for (String param : params) {
+            if (param.startsWith("token=")) {
+                return param.substring(6); // 移除 "token=" 前缀
+            }
+        }
+        
+        return null;
     }
 }

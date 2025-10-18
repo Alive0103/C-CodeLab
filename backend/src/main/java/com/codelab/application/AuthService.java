@@ -95,14 +95,14 @@ public class AuthService {
      */
     public ApiResponse<String> refreshToken(String currentToken) {
         try {
-            // 验证当前token是否有效
-            if (!jwtTokenUtils.validateToken(currentToken)) {
+            // 验证当前token是否有效（用于刷新目的，忽略过期时间）
+            if (!jwtTokenUtils.validateTokenForRefresh(currentToken)) {
                 log.warn("Token刷新失败：当前Token无效");
                 return ApiResponse.error(ApiResponseCode.UNAUTHORIZED, "当前Token无效");
             }
 
-            // 获取用户名
-            String username = jwtTokenUtils.getUsernameFromToken(currentToken);
+            // 获取用户名（忽略过期时间）
+            String username = jwtTokenUtils.getUsernameFromTokenIgnoringExpiration(currentToken);
             log.info("开始刷新Token，用户: {}", username);
 
             // 清除该用户的所有有效token
