@@ -78,9 +78,10 @@ public class JwtTokenUtils {
                 throw new IllegalArgumentException("Token is empty or null");
             }
 
-            // 解析token但不验证过期时间
+            // 解析token但不验证过期时间 - 使用setAllowedClockSkewSeconds来忽略过期
             Claims claims = Jwts.parserBuilder()
                     .setSigningKey(jwtConfig.getSigningKey())
+                    .setAllowedClockSkewSeconds(Long.MAX_VALUE / 1000) // 设置一个很大的时钟偏差来忽略过期
                     .build()
                     .parseClaimsJws(cleanToken)
                     .getBody();
@@ -146,6 +147,7 @@ public class JwtTokenUtils {
                 // 只验证token签名，忽略过期时间
                 Jwts.parserBuilder()
                         .setSigningKey(jwtConfig.getSigningKey())
+                        .setAllowedClockSkewSeconds(Long.MAX_VALUE / 1000) // 设置一个很大的时钟偏差来忽略过期
                         .build()
                         .parseClaimsJws(cleanToken);
                 return true;
