@@ -11,7 +11,8 @@ interface User {
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: null as User | null
+    user: null as User | null,
+    isRefreshing: false
   }),
   getters: {
     isLoggedIn: (state) => !!state.user
@@ -22,6 +23,10 @@ export const useAuthStore = defineStore('auth', {
     },
     clear() {
       this.user = null
+      this.isRefreshing = false
+    },
+    setRefreshing(refreshing: boolean) {
+      this.isRefreshing = refreshing
     }
   }
 })

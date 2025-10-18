@@ -33,12 +33,12 @@ public class CodeController {
     }
 
     @PostMapping("/run")
-    public CompletableFuture<ApiResponse<?>> run(@Valid @RequestBody RunCodeRequest req, HttpServletRequest request, Authentication authentication) {
+    public ApiResponse<?> run(@Valid @RequestBody RunCodeRequest req, HttpServletRequest request, Authentication authentication) {
         String username = authentication.getName();
         User user = userService.getCurrentUser(username);
-        // 返回 CompletableFuture 而不是阻塞等待结果
-        return executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle())
-                .thenApply(ApiResponse::ok);
+        // 直接同步执行，避免异步安全上下文问题
+        CodeExecutionService.ExecutionResult result = executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle());
+        return ApiResponse.ok(result);
     }
 
     private static class RecordIdOnly {

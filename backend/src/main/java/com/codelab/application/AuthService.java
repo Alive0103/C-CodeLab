@@ -87,4 +87,41 @@ public class AuthService {
         log.info("用户认证成功: {}", username);
         return ApiResponse.ok(token);
     }
+
+    /**
+     * 刷新Token
+     * @param currentToken 当前Token
+     * @return 新的Token
+     */
+    public ApiResponse<String> refreshToken(String currentToken) {
+        try {
+            // 验证当前token是否有效
+            if (!jwtTokenUtils.validateToken(currentToken)) {
+                log.warn("Token刷新失败：当前Token无效");
+                return ApiResponse.error(ApiResponseCode.UNAUTHORIZED, "当前Token无效");
+            }
+
+            // 获取用户名
+            String username = jwtTokenUtils.getUsernameFromToken(currentToken);
+            log.info("开始刷新Token，用户: {}", username);
+
+            // 清除该用户的所有有效token
+            String userTokensKey = "user_tokens:" + username;
+            redisTemplate.delete(userTokensKey);
+
+            // 生成新token
+            String cleanToken = jwtTokenUtils.generateToken(username);
+            String newToken = "Bearer " + cleanToken;
+            
+            // 将新token添加到Redis
+            redisTemplate.opsForSet().add(userTokensKey, cleanToken);
+            redisTemplate.expire(userTokensKey, jwtConfig.getExpiration(), TimeUnit.MILLISECONDS);
+
+            log.info("Token刷新成功，用户: {}", username);
+            return ApiResponse.ok(newToken);
+        } catch (Exception e) {
+            log.error("Token刷新失败", e);
+            return ApiResponse.error(ApiResponseCode.UNAUTHORIZED, "Token刷新失败");
+        }
+    }
 }

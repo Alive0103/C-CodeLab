@@ -34,9 +34,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+        String requestURI = request.getRequestURI();
+        
+        // 跳过不需要认证的路径
+        if (requestURI.startsWith("/api/auth/") || requestURI.startsWith("/ws/")) {
+            log.debug("Skipping JWT filter for public path: {}", requestURI);
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         String authHeader = request.getHeader("Authorization");
         String token = null;
         String username = null;
+        
+        log.debug("Processing request: {} {}", request.getMethod(), request.getRequestURI());
+        log.debug("Authorization header: {}", authHeader);
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
@@ -61,8 +73,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
         } else {
-            // 如果没有Authorization头或格式不正确，继续过滤器链
-            filterChain.doFilter(request, response);
+            // 如果没有Authorization头或格式不正确，返回401错误
+            log.warn("No valid Authorization header found");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json;charset=UTF-8");
+            ApiResponse<String> errorResponse = ApiResponse.error(ApiResponseCode.UNAUTHORIZED, "缺少认证信息");
+            response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
             return;
         }
 

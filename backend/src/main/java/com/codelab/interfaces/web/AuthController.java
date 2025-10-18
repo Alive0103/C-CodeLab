@@ -1,5 +1,6 @@
 package com.codelab.interfaces.web;
 
+import com.codelab.infrastructure.common.ApiResponseCode;
 import com.codelab.service.UserService;
 import com.codelab.domain.User;
 import com.codelab.application.AuthService;
@@ -31,6 +32,16 @@ public class AuthController {
     @PostMapping("/auth/logout")
     public ApiResponse<String> logout() {
         return ApiResponse.ok("登出成功");
+    }
+
+    @PostMapping("/auth/refresh")
+    public ApiResponse<String> refreshToken(@RequestHeader("Authorization") String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "无效的Authorization头");
+        }
+        
+        String token = authHeader.substring(7);
+        return authService.refreshToken(token);
     }
 }
 
