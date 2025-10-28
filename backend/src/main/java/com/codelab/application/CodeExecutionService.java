@@ -51,26 +51,20 @@ public class CodeExecutionService {
 
             CompilationResult cr = compileCode(src, exe);
             if (!cr.success) {
+                // 异步保存编译错误记录
+                saveExecutionRecordAsync(userId, title, code, cr.error, false, -1);
                 return ExecutionResult.compilationError(cr.error);
             }
 
             ExecutionResult rr = runProgram(exe);
-
-            if (userId != null) {
-                ExecutionRecord record = new ExecutionRecord();
-                User u = new User();
-                u.setId(userId);
-                record.setUser(u);
-                record.setTitle(title);
-                record.setCode(code);
-                record.setOutput(rr.output);
-                record.setError(rr.success ? "" : rr.output);
-                record.setExitCode(rr.success ? 0 : 1);
-                recordRepository.save(record);
-            }
+            
+            // 异步保存执行记录
+            saveExecutionRecordAsync(userId, title, code, rr.output, rr.success, rr.success ? 0 : 1);
 
             return rr;
         } catch (Exception e) {
+            // 异步保存系统错误记录
+            saveExecutionRecordAsync(userId, title, code, "执行失败：" + e.getMessage(), false, -2);
             return ExecutionResult.systemError("执行失败：" + e.getMessage());
         }
     }
@@ -119,6 +113,27 @@ public class CodeExecutionService {
         return os.contains("win");
     }
 
+    @Async("compileExecutor")
+    public void saveExecutionRecordAsync(Long userId, String title, String code, String output, boolean success, int exitCode) {
+        try {
+            if (userId != null) {
+                ExecutionRecord record = new ExecutionRecord();
+                User u = new User();
+                u.setId(userId);
+                record.setUser(u);
+                record.setTitle(title);
+                record.setCode(code);
+                record.setOutput(output);
+                record.setError(success ? "" : output);
+                record.setExitCode(exitCode);
+                recordRepository.save(record);
+            }
+        } catch (Exception e) {
+            // 记录保存失败不应该影响主要的代码执行流程
+            e.printStackTrace();
+        }
+    }
+
     @Data
     @AllArgsConstructor
     private static class CompilationResult {
@@ -143,5 +158,3 @@ public class CodeExecutionService {
         }
     }
 }
-
-
