@@ -311,8 +311,8 @@ curl -X POST http://localhost:8081/api/code/run \
 
 ## 👥 作者
 
-- **开发者** - [Your Name](https://github.com/your-username)
-- **项目链接** - [https://github.com/your-username/C-CodeLab](https://github.com/your-username/C-CodeLab)
+- **开发者** - [Alive0103](https://github.com/Alive0103)
+- **项目链接** - [https://github.com/Alive0103/XDU-CS-labb](https://github.com/Alive0103/XDU-CS-lab)
 
 ## 🙏 致谢
 
@@ -324,9 +324,9 @@ curl -X POST http://localhost:8081/api/code/run \
 
 如有问题或建议，请通过以下方式联系：
 
-- 📧 Email: your-email@example.com
-- 🐛 Issues: [GitHub Issues](https://github.com/your-username/C-CodeLab/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/your-username/C-CodeLab/discussions)
+- 📧 Email: wangyueyang_xd26@163.com
+- 🐛 Issues: [GitHub Issues](https://github.com/Alive0103/C-CodeLab/issues)
+- 💬 Discussions
 
 ---
 
