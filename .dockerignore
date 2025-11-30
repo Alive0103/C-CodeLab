@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.iml
+*.swp
+*.swo
+*~
+
+# 构建产物
+backend/target
+front/dist
+front/node_modules
+front/.vite
+
+# 日志
+*.log
+logs
+
+# 临时文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# 文档
+*.md
+docs/
+!README.md
+
+# 测试
+**/test
+**/tests
+**/*.test.*
+**/*.spec.*
+
+# 环境配置
+.env
+.env.local
+.env.*.local
+
+# Docker相关
+docker-compose.yml
+Dockerfile
+.dockerignore
+

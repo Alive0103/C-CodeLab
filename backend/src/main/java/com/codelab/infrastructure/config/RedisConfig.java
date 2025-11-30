@@ -14,8 +14,8 @@ public class RedisConfig {
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
-        config.setHostName("redis-12019.crce178.ap-east-1-1.ec2.redns.redis-cloud.com");
-        config.setPort(12019);
+        config.setHostName("redis-18320.c265.us-east-1-2.ec2.cloud.redislabs.com");
+        config.setPort(18320);
         config.setUsername("redisuser");
         config.setPassword("Ln216812_");
         return new LettuceConnectionFactory(config);

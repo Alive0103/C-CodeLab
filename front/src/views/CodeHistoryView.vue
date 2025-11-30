@@ -1,52 +1,11 @@
 <template>
   <div class="code-history">
     <div class="header">
-      <h1>我的代码历史</h1>
-      <div class="tabs">
-        <button 
-          :class="{ active: activeTab === 'snippets' }" 
-          @click="activeTab = 'snippets'"
-        >
-          代码片段
-        </button>
-        <button 
-          :class="{ active: activeTab === 'executions' }" 
-          @click="activeTab = 'executions'"
-        >
-          执行记录
-        </button>
-      </div>
-    </div>
-
-    <!-- 代码片段列表 -->
-    <div v-if="activeTab === 'snippets'" class="content">
-      <div v-if="snippetsLoading" class="loading">加载中...</div>
-      <div v-else-if="snippets.length === 0" class="empty">暂无代码片段</div>
-      <div v-else class="snippets-list">
-        <div 
-          v-for="snippet in snippets" 
-          :key="snippet.id" 
-          class="snippet-item"
-        >
-          <div class="snippet-info">
-            <h3>{{ snippet.title }}</h3>
-            <p class="meta">
-              {{ snippet.language }} | 
-              {{ formatDate(snippet.createdAt) }} |
-              {{ snippet.isPublic ? '公开' : '私有' }}
-            </p>
-            <div class="code-preview">{{ snippet.codeContent.substring(0, 100) }}...</div>
-          </div>
-          <div class="actions">
-            <button @click="viewSnippet(snippet)" class="btn-primary">查看</button>
-            <button @click="deleteSnippet(snippet.id)" class="btn-danger">删除</button>
-          </div>
-        </div>
-      </div>
+      <h1>执行记录</h1>
     </div>
 
     <!-- 执行记录列表 -->
-    <div v-if="activeTab === 'executions'" class="content">
+    <div class="content">
       <div v-if="executionsLoading" class="loading">加载中...</div>
       <div v-else-if="executions.length === 0" class="empty">暂无执行记录</div>
       <div v-else class="executions-list">
@@ -81,37 +40,25 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getMyCodeSnippets, getMyExecutionRecords, deleteCodeSnippet, deleteExecutionRecord } from '../api/user'
+import { getMyExecutionRecords, deleteExecutionRecord } from '../api/user'
 
-const activeTab = ref<'snippets' | 'executions'>('snippets')
-const snippets = ref([])
 const executions = ref([])
-const snippetsLoading = ref(false)
 const executionsLoading = ref(false)
 
 onMounted(() => {
-  loadSnippets()
+  loadExecutions()
 })
 
-async function loadSnippets() {
-  snippetsLoading.value = true
-  try {
-    const res = await getMyCodeSnippets()
-    snippets.value = res.data.data
-  } catch (error) {
-    console.error('加载代码片段失败:', error)
-  } finally {
-    snippetsLoading.value = false
-  }
-}
-
 async function loadExecutions() {
+  if (executionsLoading.value) return // 防止重复加载
   executionsLoading.value = true
   try {
     const res = await getMyExecutionRecords()
-    executions.value = res.data.data.content || []
+    // 后端返回的是 Page 对象，需要取 content 字段
+    executions.value = res.data.data?.content || []
   } catch (error) {
     console.error('加载执行记录失败:', error)
+    executions.value = []
   } finally {
     executionsLoading.value = false
   }
@@ -121,26 +68,9 @@ function formatDate(dateString: string) {
   return new Date(dateString).toLocaleString('zh-CN')
 }
 
-function viewSnippet(snippet: any) {
-  // 跳转到编辑器并加载代码片段
-  window.location.href = `/editor?snippet=${snippet.id}`
-}
-
 function viewExecution(execution: any) {
   // 跳转到编辑器并加载执行记录
   window.location.href = `/editor?execution=${execution.id}`
-}
-
-async function deleteSnippet(id: number) {
-  if (confirm('确定要删除这个代码片段吗？')) {
-    try {
-      await deleteCodeSnippet(id)
-      snippets.value = snippets.value.filter(s => s.id !== id)
-    } catch (error) {
-      console.error('删除失败:', error)
-      alert('删除失败')
-    }
-  }
 }
 
 async function deleteExecution(id: number) {
@@ -152,14 +82,6 @@ async function deleteExecution(id: number) {
       console.error('删除失败:', error)
       alert('删除失败')
     }
-  }
-}
-
-// 切换标签时加载对应数据
-function switchTab(tab: 'snippets' | 'executions') {
-  activeTab.value = tab
-  if (tab === 'executions' && executions.value.length === 0) {
-    loadExecutions()
   }
 }
 </script>
@@ -183,34 +105,6 @@ function switchTab(tab: 'snippets' | 'executions') {
   margin-bottom: 20px;
 }
 
-.tabs {
-  display: flex;
-  gap: 10px;
-}
-
-.tabs button {
-  padding: 10px 20px;
-  background: #333;
-  color: #ddd;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.tabs button.active {
-  background: #3b82f6;
-  color: white;
-}
-
-.tabs button:hover {
-  background: #444;
-}
-
-.tabs button.active:hover {
-  background: #2563eb;
-}
-
 .content {
   min-height: 400px;
 }
@@ -221,13 +115,13 @@ function switchTab(tab: 'snippets' | 'executions') {
   color: #888;
 }
 
-.snippets-list, .executions-list {
+.executions-list {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-.snippet-item, .execution-item {
+.execution-item {
   background: #222;
   border: 1px solid #333;
   border-radius: 8px;
@@ -237,12 +131,12 @@ function switchTab(tab: 'snippets' | 'executions') {
   align-items: flex-start;
 }
 
-.snippet-info, .execution-info {
+.execution-info {
   flex: 1;
   margin-right: 20px;
 }
 
-.snippet-info h3, .execution-info h3 {
+.execution-info h3 {
   color: #fff;
   margin: 0 0 10px 0;
   font-size: 18px;

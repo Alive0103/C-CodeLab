@@ -32,14 +32,19 @@ spring:
     redis:
       password: Ln216812_
       username: redisuser
-      host: redis-12019.crce178.ap-east-1-1.ec2.redns.redis-cloud.com
-      port: 12019
+      host: redis-18320.c265.us-east-1-2.ec2.cloud.redislabs.com
+      port: 18320
       ssl:
         enabled: true
 
 code:
   tempDir: ${java.io.tmpdir}/code-env
   gccPath: gcc # On Windows, ensure gcc is on PATH (e.g., from Mingw64 or WSL)
+  sandboxImage: c-codelab-sandbox:latest
+  dockerTimeout: 15
+  containerPool:
+    size: 5 # 容器池大小
+    maxIdleTime: 300 # 容器最大空闲时间（秒），超过此时间会被清理并重新创建
 
 logging:
   level:

@@ -1,0 +1,12 @@
+services:
+  # 代码执行沙箱镜像构建
+  # 注意：此服务仅用于构建沙箱镜像，不运行容器
+  # Java后端服务在本地运行，通过Docker API访问沙箱容器执行C代码
+  sandbox-builder:
+    build:
+      context: ./code-sandbox
+      dockerfile: Dockerfile
+    image: c-codelab-sandbox:latest
+    command: /bin/true
+    # 仅用于构建镜像，不运行
+

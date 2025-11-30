@@ -1,0 +1,18 @@
+server:
+  port: 8081
+
+# 注意：此配置文件继承application.yml的数据库和Redis配置
+# 如果需要覆盖，可以在这里设置
+
+code:
+  tempDir: ${CODE_TEMPDIR:/tmp/code-env}
+  sandboxImage: ${CODE_SANDBOX_IMAGE:c-codelab-sandbox:latest}
+  dockerTimeout: ${CODE_DOCKER_TIMEOUT:15}
+
+logging:
+  level:
+    root: INFO
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    com.codelab: INFO
+
