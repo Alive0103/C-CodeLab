@@ -3,7 +3,6 @@ package com.codelab.application;
 import com.codelab.domain.repository.ExecutionRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -131,14 +130,7 @@ public class DockerCodeExecutionServiceTest {
     }
 
     @Test
-    @EnabledIfSystemProperty(named = "docker.test.enabled", matches = "true")
     void testRuntimeError() {
-        // 如果service为null，说明不是通过Spring运行的
-        if (service == null) {
-            System.out.println("跳过测试: DockerCodeExecutionService未被注入");
-            return;
-        }
-        
         System.out.println("\n=== 测试 4: 运行时错误 ===");
         String code = "#include <stdio.h>\n" +
                 "int main() {\n" +
@@ -154,19 +146,13 @@ public class DockerCodeExecutionServiceTest {
         System.out.println("错误: " + result.getError());
         System.out.println("退出码: " + result.getExitCode());
 
-        // 运行时错误可能导致非零退出码
-        assertFalse(result.isSuccess() || result.getExitCode() != 0, 
-                "运行时错误应该导致非零退出码");
+        // 运行时错误应该导致执行失败（非零退出码或执行失败）
+        assertFalse(result.isSuccess() && result.getExitCode() == 0, 
+                "运行时错误应该导致执行失败或非零退出码");
     }
 
     @Test
     void testCodeLengthLimit() {
-        // 如果service为null，说明不是通过Spring运行的
-        if (service == null) {
-            System.out.println("跳过测试: DockerCodeExecutionService未被注入");
-            return;
-        }
-        
         System.out.println("\n=== 测试 5: 代码长度限制 ===");
         // 创建超过 10KB 的代码
         StringBuilder longCode = new StringBuilder("#include <stdio.h>\nint main() { return 0; }\n");
