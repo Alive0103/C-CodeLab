@@ -17,7 +17,7 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="c-codelab" options="-parameters" />
+      <module name="c-codelab" options="-parameters -Xlint:unchecked" />
     </option>
   </component>
 </project>

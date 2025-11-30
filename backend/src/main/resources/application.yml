@@ -40,6 +40,11 @@ spring:
 code:
   tempDir: ${java.io.tmpdir}/code-env
   gccPath: gcc # On Windows, ensure gcc is on PATH (e.g., from Mingw64 or WSL)
+  sandboxImage: c-codelab-sandbox:latest
+  dockerTimeout: 15
+  containerPool:
+    size: 5 # 容器池大小
+    maxIdleTime: 300 # 容器最大空闲时间（秒），超过此时间会被清理并重新创建
 
 logging:
   level:

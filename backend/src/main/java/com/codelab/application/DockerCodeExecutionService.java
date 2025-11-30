@@ -3,10 +3,12 @@ package com.codelab.application;
 import com.codelab.domain.ExecutionRecord;
 import com.codelab.domain.User;
 import com.codelab.domain.repository.ExecutionRecordRepository;
+import com.codelab.infrastructure.docker.ContainerPool;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -22,25 +24,25 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 使用Docker沙箱执行C代码的服务
+ * 使用Docker沙箱执行C代码的服务（容器池方案）
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DockerCodeExecutionService {
 
     private final ExecutionRecordRepository recordRepository;
+    private final ContainerPool containerPool;
 
     @Value("${code.tempDir}")
     private String tempDir;
-
-    @Value("${code.sandboxImage:c-codelab-sandbox:latest}")
-    private String sandboxImage;
 
     @Value("${code.dockerTimeout:15}")
     private int dockerTimeout;
 
     private static final int RUN_TIMEOUT = 5; // seconds
     private static final int MAX_OUTPUT_SIZE = 1024 * 1024; // 1MB
+    private static final int CONTAINER_ACQUIRE_TIMEOUT = 30; // 获取容器的超时时间（秒）
 
     public ExecutionResult compileAndRun(String code, Long userId, String title) {
         try {
@@ -80,117 +82,110 @@ public class DockerCodeExecutionService {
     }
 
     /**
-     * 在Docker容器中执行代码
+     * 在Docker容器中执行代码（使用容器池）
      */
     private ExecutionResult executeInDocker(Path codeFile, Path outputFile) throws IOException, InterruptedException {
-        String containerName = "codelab_" + UUID.randomUUID().toString().substring(0, 8);
-        String codePath = "/app/code/" + codeFile.getFileName().toString();
+        ContainerPool.ContainerInfo container = null;
+        String codeFileName = codeFile.getFileName().toString();
+        String codePath = "/app/code/" + codeFileName;
 
         try {
-            // 1. 创建容器（不启动）
-            List<String> createCmd = new ArrayList<>();
-            createCmd.add("docker");
-            createCmd.add("create");
-            createCmd.add("--name");
-            createCmd.add(containerName);
-            createCmd.add("--network");
-            createCmd.add("none"); // 网络隔离
-            createCmd.add("--memory");
-            createCmd.add("128m"); // 内存限制128MB
-            createCmd.add("--cpus");
-            createCmd.add("0.5"); // CPU限制0.5核
-            createCmd.add("--pids-limit");
-            createCmd.add("10"); // 进程数限制
-            createCmd.add("--read-only"); // 只读根文件系统
-            createCmd.add("--tmpfs");
-            createCmd.add("/tmp:rw,noexec,nosuid,size=50m"); // 临时文件系统
-            createCmd.add("--tmpfs");
-            createCmd.add("/app:rw,noexec,nosuid,size=50m");
-            createCmd.add(sandboxImage);
-            createCmd.add("/bin/bash");
-            createCmd.add("-c");
-            // 编译和执行命令
-            createCmd.add(String.format(
-                "cd /app/code && gcc -o program %s -Wall -Wextra 2>&1 && timeout %ds ./program 2>&1 || exit $?",
-                codePath, RUN_TIMEOUT
+            // 1. 从容器池获取容器
+            container = containerPool.acquireContainer(CONTAINER_ACQUIRE_TIMEOUT, TimeUnit.SECONDS);
+            if (container == null) {
+                return ExecutionResult.systemError("无法获取容器，容器池可能已满或超时");
+            }
+
+            // 检查容器健康状态
+            if (!containerPool.isContainerHealthy(container.getName())) {
+                return ExecutionResult.systemError("容器健康检查失败");
+            }
+
+            // 2. 读取代码内容
+            String codeContent = new String(Files.readAllBytes(codeFile), StandardCharsets.UTF_8);
+            
+            // 3. 先写入代码文件到容器（通过 stdin）
+            List<String> writeCmd = new ArrayList<>();
+            writeCmd.add("docker");
+            writeCmd.add("exec");
+            writeCmd.add("-i"); // 使用 stdin
+            writeCmd.add(container.getName());
+            writeCmd.add("sh");
+            writeCmd.add("-c");
+            writeCmd.add(String.format(
+                "mkdir -p /app/code && chmod 777 /app && chmod 777 /app/code && cat > %s",
+                codePath
+            ));
+            
+            log.debug("写入代码文件到容器: {}", container.getName());
+            ProcessBuilder writePb = new ProcessBuilder(writeCmd);
+            writePb.redirectErrorStream(true);
+            Process writeProcess = writePb.start();
+            
+            // 将代码内容写入到进程的 stdin
+            try (OutputStream os = writeProcess.getOutputStream()) {
+                os.write(codeContent.getBytes(StandardCharsets.UTF_8));
+                os.flush();
+                os.close(); // 关闭 stdin，让 cat 命令知道输入结束
+            }
+            
+            String writeOutput = readStream(writeProcess.getInputStream(), MAX_OUTPUT_SIZE);
+            boolean writeFinished = writeProcess.waitFor(5, TimeUnit.SECONDS);
+            
+            if (!writeFinished || writeProcess.exitValue() != 0) {
+                log.error("写入代码文件失败: {}", writeOutput);
+                return ExecutionResult.systemError("无法写入代码文件到容器: " + writeOutput);
+            }
+            log.debug("代码文件写入成功");
+            
+            // 4. 在容器中编译和执行代码
+            List<String> execCmd = new ArrayList<>();
+            execCmd.add("docker");
+            execCmd.add("exec");
+            execCmd.add(container.getName());
+            execCmd.add("/bin/bash");
+            execCmd.add("-c");
+            execCmd.add(String.format(
+                "cd /app/code && " +
+                "gcc -o /app/code/program %s -Wall -Wextra 2>&1 && " +
+                "chmod +x /app/code/program && " +
+                "sh -c '/app/code/program' 2>&1 || exit $?",
+                codePath
             ));
 
-            ProcessBuilder createPb = new ProcessBuilder(createCmd);
-            createPb.redirectErrorStream(true);
-            Process createProcess = createPb.start();
-            String createOutput = readStream(createProcess.getInputStream(), MAX_OUTPUT_SIZE);
-            boolean createFinished = createProcess.waitFor(5, TimeUnit.SECONDS);
-            
-            if (!createFinished || createProcess.exitValue() != 0) {
-                return ExecutionResult.systemError("无法创建Docker容器: " + createOutput);
+            log.debug("执行编译和运行命令");
+            ProcessBuilder execPb = new ProcessBuilder(execCmd);
+            execPb.redirectErrorStream(true);
+            Process execProcess = execPb.start();
+
+            // 读取输出（设置超时）
+            String output = readStreamWithTimeout(execProcess.getInputStream(), MAX_OUTPUT_SIZE, RUN_TIMEOUT + 2);
+            boolean finished = execProcess.waitFor(RUN_TIMEOUT + 2, TimeUnit.SECONDS);
+
+            // 如果进程还在运行，强制停止
+            if (!finished) {
+                execProcess.destroyForcibly();
+                output += "\n[程序执行超时，已强制终止]";
             }
 
-            // 2. 复制代码文件到容器
-            List<String> cpCmd = new ArrayList<>();
-            cpCmd.add("docker");
-            cpCmd.add("cp");
-            cpCmd.add(codeFile.toString());
-            cpCmd.add(containerName + ":" + codePath);
-
-            ProcessBuilder cpPb = new ProcessBuilder(cpCmd);
-            cpPb.redirectErrorStream(true);
-            Process cpProcess = cpPb.start();
-            String cpOutput = readStream(cpProcess.getInputStream(), MAX_OUTPUT_SIZE);
-            boolean cpFinished = cpProcess.waitFor(5, TimeUnit.SECONDS);
-            
-            if (!cpFinished || cpProcess.exitValue() != 0) {
-                cleanupContainer(containerName);
-                return ExecutionResult.systemError("无法复制代码文件到容器: " + cpOutput);
-            }
-
-            // 3. 启动容器并执行
-            List<String> startCmd = new ArrayList<>();
-            startCmd.add("docker");
-            startCmd.add("start");
-            startCmd.add("-a"); // 附加输出
-            startCmd.add(containerName);
-
-            ProcessBuilder startPb = new ProcessBuilder(startCmd);
-            startPb.redirectErrorStream(true);
-            Process startProcess = startPb.start();
-            
-            // 读取输出
-            String output = readStream(startProcess.getInputStream(), MAX_OUTPUT_SIZE);
-            boolean finished = startProcess.waitFor(dockerTimeout, TimeUnit.SECONDS);
-            
-            int exitCode = finished ? startProcess.exitValue() : -1;
+            int exitCode = finished ? execProcess.exitValue() : -1;
             boolean success = finished && exitCode == 0;
-
-            // 4. 清理容器
-            cleanupContainer(containerName);
 
             return new ExecutionResult(success, output, "", exitCode);
 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ExecutionResult.systemError("获取容器被中断");
         } catch (Exception e) {
-            // 确保清理容器
-            cleanupContainer(containerName);
-            throw e;
+            return ExecutionResult.systemError("执行失败: " + e.getMessage());
+        } finally {
+            // 4. 归还容器到池中（会自动清理）
+            if (container != null) {
+                containerPool.releaseContainer(container);
+            }
         }
     }
 
-    /**
-     * 清理Docker容器
-     */
-    private void cleanupContainer(String containerName) {
-        try {
-            // 停止容器（如果还在运行）
-            ProcessBuilder stopPb = new ProcessBuilder("docker", "stop", containerName);
-            Process stopProcess = stopPb.start();
-            stopProcess.waitFor(2, TimeUnit.SECONDS);
-
-            // 删除容器
-            ProcessBuilder rmPb = new ProcessBuilder("docker", "rm", containerName);
-            Process rmProcess = rmPb.start();
-            rmProcess.waitFor(2, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            // 忽略清理错误
-        }
-    }
 
     private String readStream(InputStream is, int maxSize) throws IOException {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
@@ -202,6 +197,45 @@ public class DockerCodeExecutionService {
             }
             buffer.write(chunk, 0, n);
         }
+        return buffer.toString(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 带超时的流读取方法
+     */
+    private String readStreamWithTimeout(InputStream is, int maxSize, int timeoutSeconds) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[1024];
+        long startTime = System.currentTimeMillis();
+        long timeoutMillis = timeoutSeconds * 1000L;
+        
+        while (true) {
+            // 检查是否超时
+            if (System.currentTimeMillis() - startTime > timeoutMillis) {
+                break;
+            }
+            
+            // 检查是否有可用数据（非阻塞）
+            if (is.available() > 0) {
+                int n = is.read(chunk);
+                if (n == -1) {
+                    break;
+                }
+                if (buffer.size() + n > maxSize) {
+                    throw new IOException("输出超过最大限制（1MB）");
+                }
+                buffer.write(chunk, 0, n);
+            } else {
+                // 没有数据时短暂休眠，避免 CPU 占用过高
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        
         return buffer.toString(StandardCharsets.UTF_8);
     }
 
