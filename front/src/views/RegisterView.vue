@@ -2,7 +2,7 @@
   <div class="wrap">
     <div class="card">
       <h2>注册</h2>
-      <input v-model="username" placeholder="用户名" />
+      <input v-model="username" placeholder="用户名（8-20个字符）" />
       <input v-model="email" placeholder="邮箱" type="email" />
       <input v-model="password" placeholder="密码" type="password" />
       <div class="password-requirements">
@@ -39,6 +39,11 @@ function validateForm() {
     error.value = '请输入用户名'
     return false
   }
+  // 验证用户名长度
+  if (username.value.trim().length < 8 || username.value.trim().length > 20) {
+    error.value = '用户名长度必须在8-20个字符之间'
+    return false
+  }
   if (!email.value.trim()) {
     error.value = '请输入邮箱'
     return false
@@ -51,6 +56,10 @@ function validateForm() {
   }
   if (!password.value) {
     error.value = '请输入密码'
+    return false
+  }
+  if (!confirmPassword.value) {
+    error.value = '请输入确认密码'
     return false
   }
   if (password.value !== confirmPassword.value) {
@@ -79,8 +88,9 @@ async function doRegister() {
   loading.value = true
   try {
     await register({ 
-      username: username.value, 
+      username: username.value.trim(), 
       password: password.value, 
+      confirmPassword: confirmPassword.value,
       email: email.value 
     })
     // 注册成功后跳转到登录页面
