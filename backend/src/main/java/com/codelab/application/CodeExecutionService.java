@@ -22,8 +22,13 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 原始代码执行服务（直接执行）
+ * 注意：如果使用Docker沙箱，请使用DockerCodeExecutionService
+ */
 @Service
 @RequiredArgsConstructor
+@Deprecated
 public class CodeExecutionService {
 
     private final ExecutionRecordRepository recordRepository;

@@ -3,7 +3,7 @@ package com.codelab.interfaces.web;
 import com.codelab.service.UserService;
 import com.codelab.domain.CodeSnippet;
 import com.codelab.domain.User;
-import com.codelab.application.CodeExecutionService;
+import com.codelab.application.DockerCodeExecutionService;
 import com.codelab.application.CodeSnippetService;
 import com.codelab.interfaces.web.dto.RunCodeRequest;
 import com.codelab.interfaces.web.dto.SaveCodeRequest;
@@ -12,7 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/code")
@@ -20,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
 public class CodeController {
 
     private final CodeSnippetService snippetService;
-    private final CodeExecutionService executionService;
+    private final DockerCodeExecutionService executionService;
     private final UserService userService;
 
     @PostMapping("/save")
@@ -37,7 +36,7 @@ public class CodeController {
         String username = authentication.getName();
         User user = userService.getCurrentUser(username);
         // 直接同步执行，避免异步安全上下文问题
-        CodeExecutionService.ExecutionResult result = executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle());
+        DockerCodeExecutionService.ExecutionResult result = executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle());
         return ApiResponse.ok(result);
     }
 
