@@ -91,13 +91,13 @@ public class ContainerPool {
         log.info("初始化容器池，大小: {}", poolSize);
         for (int i = 0; i < poolSize; i++) {
             try {
-                ContainerInfo container = createContainer();
+                ContainerInfo container = getOrCreateContainer();
                 if (container != null) {
                     availableContainers.offer(container);
                     allContainers.add(container);
                 }
             } catch (Exception e) {
-                log.error("创建容器失败: {}", e.getMessage(), e);
+                log.error("获取或创建容器失败: {}", e.getMessage(), e);
             }
         }
         log.info("容器池初始化完成，可用容器数: {}", availableContainers.size());
@@ -107,11 +107,119 @@ public class ContainerPool {
     }
 
     /**
-     * 创建新容器
+     * 获取或创建容器（如果已存在则重用，不存在则创建）
      */
-    private ContainerInfo createContainer() throws IOException, InterruptedException {
+    private ContainerInfo getOrCreateContainer() throws IOException, InterruptedException {
         int id = containerCounter.incrementAndGet();
         String containerName = "codelab_pool_" + id;
+        
+        // 检查容器是否已存在
+        if (containerExists(containerName)) {
+            log.info("容器已存在，尝试重用: {}", containerName);
+            // 如果容器已存在，尝试启动它（如果未运行）
+            if (!isContainerRunning(containerName)) {
+                if (startExistingContainer(containerName)) {
+                    // 初始化容器环境（确保环境正确）
+                    initializeContainer(containerName);
+                    log.info("重用已存在的容器: {}", containerName);
+                    return new ContainerInfo(containerName);
+                } else {
+                    // 启动失败，清理并重新创建
+                    log.warn("启动已存在的容器失败，将清理并重新创建: {}", containerName);
+                    cleanupContainer(containerName);
+                }
+            } else {
+                // 容器正在运行，直接重用
+                log.info("重用正在运行的容器: {}", containerName);
+                initializeContainer(containerName);
+                return new ContainerInfo(containerName);
+            }
+        }
+        
+        // 容器不存在或启动失败，创建新容器
+        return createNewContainer(containerName);
+    }
+
+    /**
+     * 检查容器是否存在（包括已停止的容器）
+     */
+    private boolean containerExists(String containerName) {
+        try {
+            List<String> checkCmd = new ArrayList<>();
+            checkCmd.add("docker");
+            checkCmd.add("ps");
+            checkCmd.add("-a"); // 包括已停止的容器
+            checkCmd.add("--filter");
+            checkCmd.add("name=" + containerName);
+            checkCmd.add("--format");
+            checkCmd.add("{{.Names}}");
+
+            ProcessBuilder pb = new ProcessBuilder(checkCmd);
+            Process process = pb.start();
+            String output = readStream(process.getInputStream(), 1024);
+            process.waitFor(2, TimeUnit.SECONDS);
+            return output.trim().equals(containerName);
+        } catch (Exception e) {
+            log.debug("检查容器是否存在时出错: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 检查容器是否正在运行
+     */
+    private boolean isContainerRunning(String containerName) {
+        try {
+            List<String> checkCmd = new ArrayList<>();
+            checkCmd.add("docker");
+            checkCmd.add("ps");
+            checkCmd.add("--filter");
+            checkCmd.add("name=" + containerName);
+            checkCmd.add("--format");
+            checkCmd.add("{{.Names}}");
+
+            ProcessBuilder pb = new ProcessBuilder(checkCmd);
+            Process process = pb.start();
+            String output = readStream(process.getInputStream(), 1024);
+            process.waitFor(2, TimeUnit.SECONDS);
+            return output.trim().equals(containerName);
+        } catch (Exception e) {
+            log.debug("检查容器运行状态时出错: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 启动已存在的容器
+     */
+    private boolean startExistingContainer(String containerName) {
+        try {
+            List<String> startCmd = new ArrayList<>();
+            startCmd.add("docker");
+            startCmd.add("start");
+            startCmd.add(containerName);
+
+            ProcessBuilder startPb = new ProcessBuilder(startCmd);
+            Process startProcess = startPb.start();
+            boolean started = startProcess.waitFor(3, TimeUnit.SECONDS);
+
+            if (started && startProcess.exitValue() == 0) {
+                return true;
+            } else {
+                String error = readStream(startProcess.getInputStream(), 1024);
+                log.warn("启动容器失败: {}, 错误: {}", containerName, error);
+                return false;
+            }
+        } catch (Exception e) {
+            log.warn("启动容器时出错: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 创建新容器
+     */
+    private ContainerInfo createNewContainer(String containerName) throws IOException, InterruptedException {
 
         List<String> createCmd = new ArrayList<>();
         createCmd.add("docker");
@@ -290,7 +398,7 @@ public class ContainerPool {
 
                 // 创建新容器补充
                 try {
-                    ContainerInfo newContainer = createContainer();
+                    ContainerInfo newContainer = getOrCreateContainer();
                     if (newContainer != null) {
                         availableContainers.offer(newContainer);
                         allContainers.add(newContainer);

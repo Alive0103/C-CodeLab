@@ -2,6 +2,11 @@
   <div class="code-history">
     <div class="header">
       <h1>执行记录</h1>
+      <div class="header-actions">
+        <button @click="goToEditor" class="btn-secondary">返回编辑器</button>
+        <button @click="goToProfile" class="btn-secondary">个人中心</button>
+        <button @click="handleLogout" class="btn-danger">登出</button>
+      </div>
     </div>
 
     <!-- 执行记录列表 -->
@@ -40,7 +45,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import { getMyExecutionRecords, deleteExecutionRecord } from '../api/user'
+
+const router = useRouter()
+const auth = useAuthStore()
 
 const executions = ref([])
 const executionsLoading = ref(false)
@@ -84,6 +94,21 @@ async function deleteExecution(id: number) {
     }
   }
 }
+
+function goToEditor() {
+  router.push('/editor')
+}
+
+function goToProfile() {
+  router.push('/profile')
+}
+
+async function handleLogout() {
+  if (confirm('确定要登出吗？')) {
+    await auth.logout()
+    router.push('/login')
+  }
+}
 </script>
 
 <style scoped>
@@ -98,11 +123,37 @@ async function deleteExecution(id: number) {
 
 .header {
   margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 
 .header h1 {
   color: #fff;
-  margin-bottom: 20px;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-secondary {
+  background: #444;
+  color: #ddd;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #555;
 }
 
 .content {

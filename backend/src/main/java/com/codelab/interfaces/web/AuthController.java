@@ -30,7 +30,12 @@ public class AuthController {
     }
 
     @PostMapping("/auth/logout")
-    public ApiResponse<String> logout() {
+    public ApiResponse<String> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            return authService.logout(token);
+        }
+        // 如果没有token，也返回成功，因为前端会清除本地token
         return ApiResponse.ok("登出成功");
     }
 

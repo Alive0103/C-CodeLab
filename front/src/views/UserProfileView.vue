@@ -34,7 +34,7 @@
           <label>新密码</label>
           <input v-model="passwordForm.newPassword" type="password" />
           <div class="password-requirements">
-            密码要求：至少8位，包含字母、数字和特殊字符(@$%!%*#?&)
+            密码要求：至少8位，包含字母、数字和特殊字符(@$%!%*#?&_)
           </div>
         </div>
         <div class="form-group">
@@ -52,6 +52,7 @@
         <div class="quick-actions">
           <button @click="goToCodeHistory" class="btn-secondary">查看代码历史</button>
           <button @click="goToEditor" class="btn-secondary">返回编辑器</button>
+          <button @click="handleLogout" class="btn-danger">登出</button>
         </div>
       </div>
 
@@ -66,9 +67,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import { getUserProfile, updateProfile, changePassword } from '../api/user'
 
 const router = useRouter()
+const auth = useAuthStore()
 
 const profile = ref({
   id: 0,
@@ -138,9 +141,9 @@ async function changePassword() {
   }
 
   // 验证密码复杂度
-  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$%!%*#?&])[A-Za-z\d@$%!%*#?&]{8,}$/
+  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$%!%*#?&_])[A-Za-z\d@$%!%*#?&_]{8,}$/
   if (!passwordRegex.test(passwordForm.value.newPassword)) {
-    showMessage('密码必须包含字母、数字和特殊字符(@$%!%*#?&)', 'error')
+    showMessage('密码必须包含字母、数字和特殊字符(@$%!%*#?&_)', 'error')
     return
   }
 
@@ -150,15 +153,21 @@ async function changePassword() {
       oldPassword: passwordForm.value.oldPassword,
       newPassword: passwordForm.value.newPassword
     })
-    showMessage('密码修改成功', 'success')
+    showMessage('密码修改成功，即将跳转到登录页面', 'success')
     // 清空表单
     passwordForm.value = {
       oldPassword: '',
       newPassword: '',
       confirmPassword: ''
     }
+    // 清除token，跳转到登录页面
+    localStorage.removeItem('token')
+    setTimeout(() => {
+      router.push('/login')
+    }, 2000)
   } catch (error: any) {
-    showMessage(error.response?.data?.message || '密码修改失败', 'error')
+    const errorMessage = error.response?.data?.message || '密码修改失败'
+    showMessage(errorMessage, 'error')
   } finally {
     passwordLoading.value = false
   }
@@ -182,6 +191,13 @@ function goToCodeHistory() {
 
 function goToEditor() {
   router.push('/editor')
+}
+
+async function handleLogout() {
+  if (confirm('确定要登出吗？')) {
+    await auth.logout()
+    router.push('/login')
+  }
 }
 </script>
 
@@ -286,6 +302,15 @@ function goToEditor() {
 
 .btn-secondary:hover {
   background: #555;
+}
+
+.btn-danger {
+  background: #dc2626;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
 }
 
 .quick-actions {

@@ -10,7 +10,7 @@ public class ChangePasswordRequest {
     private String oldPassword;
 
     @NotBlank(message = "新密码不能为空")
-    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$%!%*#?&])[A-Za-z\\d@$%!%*#?&]{8,}$", 
-             message = "密码必须包含字母、数字和特殊字符，长度至少8位")
+    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$%!%*#?&_])[A-Za-z\\d@$%!%*#?&_]{8,}$", 
+             message = "密码必须包含字母、数字和特殊字符(@$%!%*#?&_)，长度至少8位")
     private String newPassword;
 }

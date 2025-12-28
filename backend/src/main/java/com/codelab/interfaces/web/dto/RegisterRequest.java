@@ -15,7 +15,8 @@ public class RegisterRequest {
     private String username;
 
     @NotBlank
-    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$%!%*#?&])[A-Za-z\\d@$%!%*#?&]{8,}$")
+    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$%!%*#?&_])[A-Za-z\\d@$%!%*#?&_]{8,}$", 
+             message = "密码必须包含字母、数字和特殊字符(@$%!%*#?&_)，长度至少8位")
     private String password;
 
     @NotBlank

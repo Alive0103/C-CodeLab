@@ -23,7 +23,7 @@ public class User {
     @Column(name = "password_salt", nullable = false, length = 32)
     private String passwordSalt;
 
-    @Column(length = 128)
+    @Column(length = 128, unique = true)
     private String email;
 
     @Column(name = "avatar_url", length = 255)

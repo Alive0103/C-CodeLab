@@ -47,6 +47,15 @@ http.interceptors.response.use(
   async (err) => {
     const originalRequest = err.config
 
+    // 排除登录和注册接口，这些接口的401错误应该直接返回给前端显示
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/login') || 
+                           originalRequest.url?.includes('/auth/register')
+    
+    // 如果是登录/注册接口，直接返回错误，不尝试刷新token
+    if (isAuthEndpoint) {
+      return Promise.reject(err)
+    }
+
     // 处理401和403错误
     if ((err.response?.status === 401 || err.response?.status === 403) && !originalRequest._retry) {
       if (isRefreshing) {

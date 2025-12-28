@@ -16,4 +16,8 @@ export function getUser() {
   return http.get('/user')
 }
 
+export function logout() {
+  return http.post('/auth/logout')
+}
+
 

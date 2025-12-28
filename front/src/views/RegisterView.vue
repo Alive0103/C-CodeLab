@@ -4,11 +4,29 @@
       <h2>注册</h2>
       <input v-model="username" placeholder="用户名（8-20个字符）" />
       <input v-model="email" placeholder="邮箱" type="email" />
-      <input v-model="password" placeholder="密码" type="password" />
-      <div class="password-requirements">
-        密码要求：至少8位，包含字母、数字和特殊字符(@$%!%*#?&)
+      <div class="password-wrapper">
+        <input 
+          v-model="password" 
+          :type="showPassword ? 'text' : 'password'" 
+          placeholder="密码" 
+        />
+        <span class="password-toggle" @click="togglePassword">
+          {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+        </span>
       </div>
-      <input v-model="confirmPassword" placeholder="确认密码" type="password" />
+      <div class="password-requirements">
+        密码要求：至少8位，包含字母、数字和特殊字符(@$%!%*#?&_)
+      </div>
+      <div class="password-wrapper">
+        <input 
+          v-model="confirmPassword" 
+          :type="showConfirmPassword ? 'text' : 'password'" 
+          placeholder="确认密码" 
+        />
+        <span class="password-toggle" @click="toggleConfirmPassword">
+          {{ showConfirmPassword ? '👁️' : '👁️‍🗨️' }}
+        </span>
+      </div>
       <button @click="doRegister" :disabled="loading">{{ loading ? '处理中...' : '注册' }}</button>
       <p class="tip" v-if="error">{{ error }}</p>
       <p class="link">
@@ -33,6 +51,16 @@ const password = ref('')
 const confirmPassword = ref('')
 const loading = ref(false)
 const error = ref('')
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
+
+function togglePassword() {
+  showPassword.value = !showPassword.value
+}
+
+function toggleConfirmPassword() {
+  showConfirmPassword.value = !showConfirmPassword.value
+}
 
 function validateForm() {
   if (!username.value.trim()) {
@@ -71,9 +99,9 @@ function validateForm() {
     return false
   }
   // 验证密码复杂度
-  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$%!%*#?&])[A-Za-z\d@$%!%*#?&]{8,}$/
+  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$%!%*#?&_])[A-Za-z\d@$%!%*#?&_]{8,}$/
   if (!passwordRegex.test(password.value)) {
-    error.value = '密码必须包含字母、数字和特殊字符(@$%!%*#?&)'
+    error.value = '密码必须包含字母、数字和特殊字符(@$%!%*#?&_)'
     return false
   }
   return true
@@ -87,16 +115,33 @@ async function doRegister() {
   
   loading.value = true
   try {
-    await register({ 
+    const res = await register({ 
       username: username.value.trim(), 
       password: password.value, 
       confirmPassword: confirmPassword.value,
       email: email.value 
     })
-    // 注册成功后跳转到登录页面
-    router.push('/login?registered=true')
+    
+    // 检查业务状态码：后端在 HTTP 200 响应中返回业务状态码
+    if (res.data.code === 200) {
+      // 注册成功后跳转到登录页面
+      router.push('/login?registered=true')
+    } else {
+      // 业务状态码不是 200，说明注册失败
+      // 显示后端返回的具体错误信息
+      error.value = res.data.message || '注册失败'
+    }
   } catch (e: any) {
-    error.value = e.response?.data?.message || '注册失败'
+    // 处理网络错误或其他异常
+    let errorMessage = '注册失败'
+    if (e.response?.data?.message) {
+      errorMessage = e.response.data.message
+    } else if (e.response?.data?.error) {
+      errorMessage = e.response.data.error
+    } else if (e.message) {
+      errorMessage = e.message
+    }
+    error.value = errorMessage
   } finally {
     loading.value = false
   }
@@ -133,6 +178,31 @@ input {
   border: 1px solid #333; 
   color: #eee; 
   border-radius: 4px; 
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  flex: 1;
+  padding-right: 32px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 16px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.password-toggle:hover {
+  opacity: 1;
 }
 
 .password-requirements {

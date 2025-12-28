@@ -32,8 +32,8 @@ spring:
     redis:
       password: Ln216812_
       username: redisuser
-      host: redis-18320.c265.us-east-1-2.ec2.cloud.redislabs.com
-      port: 18320
+      host: redis-18586.c93.us-east-1-3.ec2.cloud.redislabs.com
+      port: 18586
       ssl:
         enabled: true
 

@@ -2,15 +2,11 @@ package com.codelab.interfaces.web;
 
 import com.codelab.infrastructure.common.ApiResponseCode;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestControllerAdvice
 @Slf4j
@@ -25,23 +21,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ApiResponse<String> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName;
-            String errorMessage = error.getDefaultMessage();
+        // 获取第一个错误信息，优先返回给用户
+        String errorMessage = ex.getBindingResult().getAllErrors().stream()
+                .map(error -> {
+                    if (error instanceof FieldError) {
+                        FieldError fieldError = (FieldError) error;
+                        String message = error.getDefaultMessage();
+                        // 如果错误信息已经包含字段名，直接返回；否则添加字段名
+                        if (message != null && !message.contains(fieldError.getField())) {
+                            return fieldError.getField() + ": " + message;
+                        }
+                        return message != null ? message : "参数验证失败";
+                    }
+                    return error.getDefaultMessage() != null ? error.getDefaultMessage() : "参数验证失败";
+                })
+                .findFirst()
+                .orElse("参数验证失败");
 
-            if (error instanceof FieldError) {
-                FieldError fieldError = (FieldError) error;
-                fieldName = fieldError.getField();
-            } else {
-                fieldName = error.getObjectName();
-            }
-
-            errors.put(fieldName, errorMessage);
-        });
-
-        log.warn("参数验证失败: {}", errors);
-        return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "参数验证失败: " + errors);
+        log.warn("参数验证失败: {}", errorMessage);
+        return ApiResponse.error(ApiResponseCode.BAD_REQUEST, errorMessage);
     }
 
 

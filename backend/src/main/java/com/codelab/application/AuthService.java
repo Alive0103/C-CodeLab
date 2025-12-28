@@ -33,6 +33,11 @@ public class AuthService {
             return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "用户名已被使用");
         }
         
+        // 检查邮箱是否已被注册
+        if (userService.existsByEmail(email)) {
+            return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "该邮箱已注册，请直接登录");
+        }
+        
         String hashedPassword = passwordUtils.hashPassword(rawPassword, null);
         
         User u = new User();
@@ -121,6 +126,30 @@ public class AuthService {
         } catch (Exception e) {
             log.error("Token刷新失败", e);
             return ApiResponse.error(ApiResponseCode.UNAUTHORIZED, "Token刷新失败");
+        }
+    }
+
+    /**
+     * 登出
+     * @param token 当前Token
+     * @return 登出结果
+     */
+    public ApiResponse<String> logout(String token) {
+        try {
+            // 从token中提取用户名（忽略过期时间，因为登出时token可能已过期）
+            String username = jwtTokenUtils.getUsernameFromTokenIgnoringExpiration(token);
+            log.info("用户登出: {}", username);
+            
+            // 清除该用户的所有有效token
+            String userTokensKey = "user_tokens:" + username;
+            redisTemplate.delete(userTokensKey);
+            
+            log.info("用户登出成功: {}", username);
+            return ApiResponse.ok("登出成功");
+        } catch (Exception e) {
+            log.warn("登出时处理token失败，但继续完成登出流程", e);
+            // 即使token解析失败，也返回成功，因为前端会清除本地token
+            return ApiResponse.ok("登出成功");
         }
     }
 }
