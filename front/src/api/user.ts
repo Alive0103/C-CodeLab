@@ -4,7 +4,7 @@ export function getUserProfile() {
   return http.get('/user/profile')
 }
 
-export function updateProfile(data: { email: string }) {
+export function updateProfile(data: { username: string }) {
   return http.put('/user/profile', data)
 }
 

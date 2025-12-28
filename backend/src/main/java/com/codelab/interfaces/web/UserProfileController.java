@@ -49,25 +49,47 @@ public class UserProfileController {
 
     /**
      * 更新用户基本信息
+     * 注意：邮箱不允许修改，因为邮箱是账号的唯一标识
      */
     @PutMapping("/profile")
+    @Transactional
     public ApiResponse<String> updateProfile(
             @Valid @RequestBody UpdateProfileRequest request,
             Authentication authentication) {
-        String username = authentication.getName();
-        User currentUser = userService.getCurrentUser(username);
-        // 更新邮箱（如果提供了且不重复）
-        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
-            if (!request.getEmail().equals(currentUser.getEmail()) && 
-                userService.existsByEmail(request.getEmail())) {
-                return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "邮箱已被使用");
+        String currentUsername = authentication.getName();
+        log.info("用户 {} 开始更新个人信息", currentUsername);
+        
+        User currentUser = userService.getCurrentUser(currentUsername);
+        
+        // 更新用户名（如果提供了且与当前不同）
+        if (request.getUsername() != null && !request.getUsername().trim().isEmpty()) {
+            String newUsername = request.getUsername().trim();
+            
+            // 如果新用户名与当前用户名相同，无需更新
+            if (newUsername.equals(currentUser.getUsername())) {
+                log.info("用户名未变化，用户: {}", currentUsername);
+                return ApiResponse.ok("更新成功");
             }
-            currentUser.setEmail(request.getEmail());
+            
+            // 检查新用户名是否已被使用
+            if (userService.existsByUsername(newUsername)) {
+                log.warn("用户名已被使用: {}", newUsername);
+                return ApiResponse.error(ApiResponseCode.BAD_REQUEST, "用户名已被使用");
+            }
+            
+            log.info("更新用户名: {} -> {}", currentUser.getUsername(), newUsername);
+            currentUser.setUsername(newUsername);
+            
+            // 清除旧用户名的token，强制重新登录
+            String oldUserTokensKey = "user_tokens:" + currentUsername;
+            redisTemplate.delete(oldUserTokensKey);
+            log.info("已清除旧用户名的token: {}", currentUsername);
         }
 
         userService.updateUser(currentUser);
+        log.info("用户信息更新成功，用户: {}", currentUser.getUsername());
         
-        return ApiResponse.ok("更新成功");
+        return ApiResponse.ok("更新成功，请重新登录");
     }
 
     /**
