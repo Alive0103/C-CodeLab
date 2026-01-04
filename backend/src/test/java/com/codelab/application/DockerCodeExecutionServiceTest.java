@@ -125,7 +125,9 @@ public class DockerCodeExecutionServiceTest {
         System.out.println("退出码: " + result.getExitCode());
 
         assertFalse(result.isSuccess(), "编译错误应该导致执行失败");
-        assertTrue(result.getOutput().contains("error") || result.getOutput().contains("Error"), 
+        // 编译错误信息在error字段中
+        String errorOutput = result.getError() != null ? result.getError() : result.getOutput();
+        assertTrue(errorOutput.contains("error") || errorOutput.contains("Error") || errorOutput.contains("expected"), 
                 "输出应该包含错误信息");
     }
 

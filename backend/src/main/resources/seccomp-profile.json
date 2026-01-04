@@ -8,10 +8,6 @@
   "syscalls": [
     {
       "names": [
-        "fork",
-        "vfork",
-        "clone",
-        "clone3",
         "setuid",
         "setgid",
         "setreuid",

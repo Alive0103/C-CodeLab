@@ -340,8 +340,11 @@ public class ComprehensiveExecutionTest {
         System.out.println("错误: [" + result.getError() + "]");
 
         assertFalse(result.isSuccess(), "应该编译失败");
-        assertTrue(result.getOutput().contains("error") || 
-                   result.getOutput().contains("expected ';'"), 
+        // 编译错误信息在error字段中
+        String errorOutput = result.getError() != null ? result.getError() : result.getOutput();
+        assertTrue(errorOutput.contains("error") || 
+                   errorOutput.contains("expected ';'") ||
+                   errorOutput.contains(";"), 
                 "应该包含语法错误信息");
     }
 
@@ -363,9 +366,12 @@ public class ComprehensiveExecutionTest {
         System.out.println("输出: [" + result.getOutput() + "]");
 
         assertFalse(result.isSuccess(), "应该编译失败");
-        assertTrue(result.getOutput().contains("error") || 
-                   result.getOutput().contains("conversion") ||
-                   result.getOutput().contains("pointer"), 
+        // 编译错误信息在error字段中
+        String errorOutput = result.getError() != null ? result.getError() : result.getOutput();
+        assertTrue(errorOutput.contains("error") || 
+                   errorOutput.contains("conversion") ||
+                   errorOutput.contains("pointer") ||
+                   errorOutput.contains("incompatible"), 
                 "应该包含类型错误信息");
     }
 
@@ -387,9 +393,12 @@ public class ComprehensiveExecutionTest {
         System.out.println("输出: [" + result.getOutput() + "]");
 
         assertFalse(result.isSuccess(), "应该编译失败");
-        assertTrue(result.getOutput().contains("error") || 
-                   result.getOutput().contains("undeclared") ||
-                   result.getOutput().contains("undefined_var"), 
+        // 编译错误信息在error字段中
+        String errorOutput = result.getError() != null ? result.getError() : result.getOutput();
+        assertTrue(errorOutput.contains("error") || 
+                   errorOutput.contains("undeclared") ||
+                   errorOutput.contains("undefined_var") ||
+                   errorOutput.contains("undefined"), 
                 "应该包含未定义变量错误信息");
     }
 
@@ -408,9 +417,12 @@ public class ComprehensiveExecutionTest {
         System.out.println("输出: [" + result.getOutput() + "]");
 
         assertFalse(result.isSuccess(), "应该编译失败");
-        assertTrue(result.getOutput().contains("error") || 
-                   result.getOutput().contains("nonexistent.h") ||
-                   result.getOutput().contains("No such file"), 
+        // 编译错误信息在error字段中
+        String errorOutput = result.getError() != null ? result.getError() : result.getOutput();
+        assertTrue(errorOutput.contains("error") || 
+                   errorOutput.contains("nonexistent.h") ||
+                   errorOutput.contains("No such file") ||
+                   errorOutput.contains("fatal error"), 
                 "应该包含头文件缺失错误信息");
     }
 

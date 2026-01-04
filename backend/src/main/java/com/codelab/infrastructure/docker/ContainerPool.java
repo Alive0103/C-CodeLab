@@ -274,10 +274,10 @@ public class ContainerPool {
         createCmd.add("--tmpfs");
         createCmd.add("/tmp:rw,noexec,nosuid,size=50m");
         createCmd.add("--tmpfs");
-        createCmd.add("/app:rw,exec,size=50m"); // 添加 exec 选项以允许执行文件
-        // 安全选项：使用非特权用户
-        createCmd.add("--user");
-        createCmd.add("1000:1000"); // sandbox用户
+        // tmpfs挂载时设置uid/gid，确保sandbox用户有权限
+        createCmd.add("/app:rw,exec,nosuid,size=50m,uid=1000,gid=1000,mode=777");
+        // 注意：不使用--user，让容器以root启动，初始化后再切换到非特权用户
+        // 这样可以在初始化时设置权限
         // 安全选项：禁止获取新权限
         createCmd.add("--security-opt");
         createCmd.add("no-new-privileges:true");
@@ -290,6 +290,7 @@ public class ContainerPool {
         createCmd.add("--cap-drop");
         createCmd.add("ALL");
         createCmd.add(sandboxImage);
+        // 使用root用户启动容器，初始化后再切换到sandbox用户
         createCmd.add("tail");
         createCmd.add("-f");
         createCmd.add("/dev/null"); // 保持容器运行
@@ -330,24 +331,37 @@ public class ContainerPool {
 
     /**
      * 初始化容器环境
+     * 使用 root 用户设置权限，确保 /app/code 目录可写
      */
     private void initializeContainer(String containerName) {
         try {
+            // 使用 root 用户设置 /app 目录权限
             List<String> initCmd = new ArrayList<>();
             initCmd.add("docker");
             initCmd.add("exec");
+            initCmd.add("-u");
+            initCmd.add("root");
             initCmd.add(containerName);
             initCmd.add("/bin/bash");
             initCmd.add("-c");
-            initCmd.add("mkdir -p /app/code && chmod 777 /app && chmod 777 /app/code");
+            // 确保目录存在并设置权限
+            // tmpfs挂载时已设置uid=1000,gid=1000,mode=777，但子目录需要明确设置权限
+            // 使用root用户设置/app/code目录为777权限，确保非特权用户可以写入
+            initCmd.add("mkdir -p /app/code && chmod 777 /app/code && chmod 1777 /tmp");
 
             ProcessBuilder pb = new ProcessBuilder(initCmd);
             pb.redirectErrorStream(true);
             Process process = pb.start();
-            readStream(process.getInputStream(), 1024);
-            process.waitFor(3, TimeUnit.SECONDS);
+            String output = readStream(process.getInputStream(), 1024);
+            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+            if (!finished || process.exitValue() != 0) {
+                log.error("初始化容器环境失败，退出码: {}, 输出: {}", 
+                    finished ? process.exitValue() : -1, output);
+            } else {
+                log.debug("容器环境初始化成功: {}", containerName);
+            }
         } catch (Exception e) {
-            log.warn("初始化容器环境失败: {}", e.getMessage());
+            log.error("初始化容器环境失败: {}", e.getMessage(), e);
         }
     }
 
@@ -387,16 +401,19 @@ public class ContainerPool {
 
     /**
      * 清理容器内的文件
+     * 使用非特权用户清理（/app/code已设置为777权限）
      */
     private void cleanupContainerFiles(String containerName) {
         try {
             List<String> cleanupCmd = new ArrayList<>();
             cleanupCmd.add("docker");
             cleanupCmd.add("exec");
+            cleanupCmd.add("-u");
+            cleanupCmd.add("1000:1000"); // 使用非特权用户清理
             cleanupCmd.add(containerName);
             cleanupCmd.add("/bin/bash");
             cleanupCmd.add("-c");
-            cleanupCmd.add("rm -rf /app/code/* && mkdir -p /app/code && chmod 777 /app/code");
+            cleanupCmd.add("rm -rf /app/code/* && mkdir -p /app/code");
 
             ProcessBuilder pb = new ProcessBuilder(cleanupCmd);
             pb.redirectErrorStream(true);

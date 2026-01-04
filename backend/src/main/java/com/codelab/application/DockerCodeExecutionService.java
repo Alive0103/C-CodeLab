@@ -108,16 +108,21 @@ public class DockerCodeExecutionService {
             String codeContent = new String(Files.readAllBytes(codeFile), StandardCharsets.UTF_8);
             
             // 3. 先写入代码文件到容器（通过 stdin）
+            // 使用root用户写入，因为/app/code已设置为777权限，root可以写入
+            // tmpfs挂载时已设置uid=1000,gid=1000，所以创建的文件会自动属于1000:1000
+            // 注意：虽然使用root写入，但文件会自动属于1000:1000（tmpfs挂载设置），且后续编译和执行都使用非特权用户
             List<String> writeCmd = new ArrayList<>();
             writeCmd.add("docker");
             writeCmd.add("exec");
             writeCmd.add("-i"); // 使用 stdin
+            writeCmd.add("-u");
+            writeCmd.add("root"); // 使用root用户写入，确保有足够权限
             writeCmd.add(container.getName());
             writeCmd.add("sh");
             writeCmd.add("-c");
             writeCmd.add(String.format(
-                "mkdir -p /app/code && chmod 777 /app && chmod 777 /app/code && cat > %s",
-                codePath
+                "mkdir -p /app/code && cat > %s && chmod 644 %s",
+                codePath, codePath
             ));
             
             log.debug("写入代码文件到容器: {}", container.getName());
@@ -142,9 +147,12 @@ public class DockerCodeExecutionService {
             log.debug("代码文件写入成功");
             
             // 4. 在容器中编译代码
+            // 使用非特权用户编译，确保安全
             List<String> compileCmd = new ArrayList<>();
             compileCmd.add("docker");
             compileCmd.add("exec");
+            compileCmd.add("-u");
+            compileCmd.add("1000:1000"); // 使用非特权用户编译
             compileCmd.add(container.getName());
             compileCmd.add("/bin/bash");
             compileCmd.add("-c");
@@ -171,10 +179,13 @@ public class DockerCodeExecutionService {
             log.debug("编译成功，开始执行程序");
 
             // 5. 执行程序（提供标准输入）
+            // 使用非特权用户执行用户代码，确保安全
             List<String> runCmd = new ArrayList<>();
             runCmd.add("docker");
             runCmd.add("exec");
             runCmd.add("-i"); // 使用 stdin 提供输入
+            runCmd.add("-u");
+            runCmd.add("1000:1000"); // 使用非特权用户执行
             runCmd.add(container.getName());
             runCmd.add("/bin/bash");
             runCmd.add("-c");
