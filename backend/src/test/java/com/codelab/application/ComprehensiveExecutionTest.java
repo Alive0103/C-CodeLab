@@ -351,10 +351,15 @@ public class ComprehensiveExecutionTest {
     @Test
     @DisplayName("CE-102: 编译错误-类型 - 类型不匹配")
     void testCE102_TypeError() {
+        // 使用更明确的类型错误：尝试将结构体赋值给整数
+        // 这会导致明确的编译错误
         String code = "#include <stdio.h>\n" +
                 "\n" +
+                "struct Point { int x; int y; };\n" +
+                "\n" +
                 "int main() {\n" +
-                "int x = \"string\";\n" +
+                "struct Point p = {1, 2};\n" +
+                "int x = p;  // 将结构体赋值给int，这是明确的类型错误\n" +
                 "return 0;\n" +
                 "}";
 
@@ -364,14 +369,16 @@ public class ComprehensiveExecutionTest {
         System.out.println("=== CE-102 测试结果 ===");
         System.out.println("成功: " + result.isSuccess());
         System.out.println("输出: [" + result.getOutput() + "]");
+        System.out.println("错误: [" + result.getError() + "]");
 
         assertFalse(result.isSuccess(), "应该编译失败");
         // 编译错误信息在error字段中
         String errorOutput = result.getError() != null ? result.getError() : result.getOutput();
         assertTrue(errorOutput.contains("error") || 
                    errorOutput.contains("conversion") ||
-                   errorOutput.contains("pointer") ||
-                   errorOutput.contains("incompatible"), 
+                   errorOutput.contains("incompatible") ||
+                   errorOutput.contains("struct") ||
+                   errorOutput.contains("assignment"), 
                 "应该包含类型错误信息");
     }
 
