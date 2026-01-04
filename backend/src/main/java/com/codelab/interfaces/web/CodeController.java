@@ -36,7 +36,7 @@ public class CodeController {
         String username = authentication.getName();
         User user = userService.getCurrentUser(username);
         // 直接同步执行，避免异步安全上下文问题
-        DockerCodeExecutionService.ExecutionResult result = executionService.compileAndRun(req.getCode(), user.getId(), req.getTitle());
+        DockerCodeExecutionService.ExecutionResult result = executionService.compileAndRun(req.getCode(), req.getInput(), user.getId(), req.getTitle());
         return ApiResponse.ok(result);
     }
 

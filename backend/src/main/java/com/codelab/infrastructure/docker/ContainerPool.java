@@ -4,11 +4,16 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -37,6 +42,7 @@ public class ContainerPool {
     private final List<ContainerInfo> allContainers = new ArrayList<>();
     private final AtomicInteger containerCounter = new AtomicInteger(0);
     private volatile boolean shutdown = false;
+    private String seccompProfilePath; // seccomp配置文件路径
 
     /**
      * 容器信息
@@ -89,6 +95,14 @@ public class ContainerPool {
     @PostConstruct
     public void initialize() {
         log.info("初始化容器池，大小: {}", poolSize);
+        
+        // 准备seccomp配置文件
+        try {
+            prepareSeccompProfile();
+        } catch (Exception e) {
+            log.warn("准备seccomp配置文件失败，将不使用seccomp限制: {}", e.getMessage());
+        }
+        
         for (int i = 0; i < poolSize; i++) {
             try {
                 ContainerInfo container = getOrCreateContainer();
@@ -104,6 +118,28 @@ public class ContainerPool {
 
         // 启动清理线程
         startCleanupThread();
+    }
+    
+    /**
+     * 准备seccomp配置文件（复制到临时目录）
+     */
+    private void prepareSeccompProfile() throws IOException {
+        Resource resource = new ClassPathResource("seccomp-profile.json");
+        if (!resource.exists()) {
+            log.warn("seccomp配置文件不存在，将不使用seccomp限制");
+            return;
+        }
+        
+        // 复制到临时文件
+        File tempFile = File.createTempFile("seccomp-", ".json");
+        tempFile.deleteOnExit();
+        
+        try (InputStream is = resource.getInputStream()) {
+            Files.copy(is, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+        
+        seccompProfilePath = tempFile.getAbsolutePath();
+        log.info("seccomp配置文件已准备: {}", seccompProfilePath);
     }
 
     /**
@@ -239,6 +275,20 @@ public class ContainerPool {
         createCmd.add("/tmp:rw,noexec,nosuid,size=50m");
         createCmd.add("--tmpfs");
         createCmd.add("/app:rw,exec,size=50m"); // 添加 exec 选项以允许执行文件
+        // 安全选项：使用非特权用户
+        createCmd.add("--user");
+        createCmd.add("1000:1000"); // sandbox用户
+        // 安全选项：禁止获取新权限
+        createCmd.add("--security-opt");
+        createCmd.add("no-new-privileges:true");
+        // 安全选项：seccomp配置文件（如果可用）
+        if (seccompProfilePath != null && new File(seccompProfilePath).exists()) {
+            createCmd.add("--security-opt");
+            createCmd.add("seccomp=" + seccompProfilePath);
+        }
+        // 安全选项：禁用所有capabilities，只保留必要的
+        createCmd.add("--cap-drop");
+        createCmd.add("ALL");
         createCmd.add(sandboxImage);
         createCmd.add("tail");
         createCmd.add("-f");

@@ -74,7 +74,7 @@ public class DockerCodeExecutionServiceTest {
                 "    return 0;\n" +
                 "}";
 
-        DockerCodeExecutionService.ExecutionResult result = service.compileAndRun(code, null, "Test Hello World");
+        DockerCodeExecutionService.ExecutionResult result = service.compileAndRun(code, null, null, "Test Hello World");
 
         System.out.println("成功: " + result.isSuccess());
         System.out.println("输出: " + result.getOutput());
@@ -96,7 +96,7 @@ public class DockerCodeExecutionServiceTest {
                 "    return 0;\n" +
                 "}";
 
-        DockerCodeExecutionService.ExecutionResult result = service.compileAndRun(code, null, "Test Calculation");
+        DockerCodeExecutionService.ExecutionResult result = service.compileAndRun(code, null, null, "Test Calculation");
 
         System.out.println("成功: " + result.isSuccess());
         System.out.println("输出: " + result.getOutput());
@@ -117,7 +117,7 @@ public class DockerCodeExecutionServiceTest {
                 "    return 0\n" +  // 缺少分号
                 "}";
 
-        DockerCodeExecutionService.ExecutionResult result = service.compileAndRun(code, null, "Test Compilation Error");
+        DockerCodeExecutionService.ExecutionResult result = service.compileAndRun(code, null, null, "Test Compilation Error");
 
         System.out.println("成功: " + result.isSuccess());
         System.out.println("输出: " + result.getOutput());
@@ -139,7 +139,7 @@ public class DockerCodeExecutionServiceTest {
                 "    return 0;\n" +
                 "}";
 
-        DockerCodeExecutionService.ExecutionResult result = service.compileAndRun(code, null, "Test Runtime Error");
+        DockerCodeExecutionService.ExecutionResult result = service.compileAndRun(code, null, null, "Test Runtime Error");
 
         System.out.println("成功: " + result.isSuccess());
         System.out.println("输出: " + result.getOutput());
@@ -160,7 +160,7 @@ public class DockerCodeExecutionServiceTest {
             longCode.append("// 注释行\n");
         }
 
-        DockerCodeExecutionService.ExecutionResult result = service.compileAndRun(longCode.toString(), null, "Test Long Code");
+        DockerCodeExecutionService.ExecutionResult result = service.compileAndRun(longCode.toString(), null, null, "Test Long Code");
 
         System.out.println("成功: " + result.isSuccess());
         System.out.println("输出: " + result.getOutput());

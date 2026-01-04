@@ -44,7 +44,7 @@ public class DockerCodeExecutionService {
     private static final int MAX_OUTPUT_SIZE = 1024 * 1024; // 1MB
     private static final int CONTAINER_ACQUIRE_TIMEOUT = 30; // 获取容器的超时时间（秒）
 
-    public ExecutionResult compileAndRun(String code, Long userId, String title) {
+    public ExecutionResult compileAndRun(String code, String input, Long userId, String title) {
         try {
             if (code == null || code.length() > 10 * 1024) {
                 return ExecutionResult.systemError("代码长度超过限制（最大10KB）");
@@ -60,7 +60,7 @@ public class DockerCodeExecutionService {
             Files.write(codeFile, code.getBytes(StandardCharsets.UTF_8));
 
             // 在Docker容器中执行代码
-            ExecutionResult result = executeInDocker(codeFile, outputFile);
+            ExecutionResult result = executeInDocker(codeFile, outputFile, input);
             
             // 清理临时文件
             try {
@@ -83,8 +83,11 @@ public class DockerCodeExecutionService {
 
     /**
      * 在Docker容器中执行代码（使用容器池）
+     * @param codeFile 代码文件路径
+     * @param outputFile 输出文件路径（未使用，保留以兼容）
+     * @param input 标准输入内容（可为null）
      */
-    private ExecutionResult executeInDocker(Path codeFile, Path outputFile) throws IOException, InterruptedException {
+    private ExecutionResult executeInDocker(Path codeFile, Path outputFile, String input) throws IOException, InterruptedException {
         ContainerPool.ContainerInfo container = null;
         String codeFileName = codeFile.getFileName().toString();
         String codePath = "/app/code/" + codeFileName;
@@ -138,37 +141,86 @@ public class DockerCodeExecutionService {
             }
             log.debug("代码文件写入成功");
             
-            // 4. 在容器中编译和执行代码
-            List<String> execCmd = new ArrayList<>();
-            execCmd.add("docker");
-            execCmd.add("exec");
-            execCmd.add(container.getName());
-            execCmd.add("/bin/bash");
-            execCmd.add("-c");
-            execCmd.add(String.format(
+            // 4. 在容器中编译代码
+            List<String> compileCmd = new ArrayList<>();
+            compileCmd.add("docker");
+            compileCmd.add("exec");
+            compileCmd.add(container.getName());
+            compileCmd.add("/bin/bash");
+            compileCmd.add("-c");
+            compileCmd.add(String.format(
                 "cd /app/code && " +
-                "gcc -o /app/code/program %s -Wall -Wextra 2>&1 && " +
-                "chmod +x /app/code/program && " +
-                "sh -c '/app/code/program' 2>&1 || exit $?",
+                "gcc -o /app/code/program %s -std=c11 -Wall -Wextra -O2 -lm 2>&1",
                 codePath
             ));
 
-            log.debug("执行编译和运行命令");
-            ProcessBuilder execPb = new ProcessBuilder(execCmd);
-            execPb.redirectErrorStream(true);
-            Process execProcess = execPb.start();
+            log.debug("执行编译命令");
+            ProcessBuilder compilePb = new ProcessBuilder(compileCmd);
+            compilePb.redirectErrorStream(true);
+            Process compileProcess = compilePb.start();
+            
+            String compileOutput = readStream(compileProcess.getInputStream(), MAX_OUTPUT_SIZE);
+            boolean compileFinished = compileProcess.waitFor(10, TimeUnit.SECONDS);
+            
+            if (!compileFinished || compileProcess.exitValue() != 0) {
+                // 编译失败，返回编译错误
+                int exitCode = compileFinished ? compileProcess.exitValue() : -1;
+                return new ExecutionResult(false, "", compileOutput, exitCode);
+            }
+            
+            log.debug("编译成功，开始执行程序");
+
+            // 5. 执行程序（提供标准输入）
+            List<String> runCmd = new ArrayList<>();
+            runCmd.add("docker");
+            runCmd.add("exec");
+            runCmd.add("-i"); // 使用 stdin 提供输入
+            runCmd.add(container.getName());
+            runCmd.add("/bin/bash");
+            runCmd.add("-c");
+            runCmd.add("cd /app/code && /app/code/program 2>&1 || exit $?");
+
+            log.debug("执行程序命令");
+            ProcessBuilder runPb = new ProcessBuilder(runCmd);
+            runPb.redirectErrorStream(true);
+            Process runProcess = runPb.start();
+
+            // 如果有输入，写入到进程的 stdin
+            if (input != null && !input.isEmpty()) {
+                try (OutputStream os = runProcess.getOutputStream()) {
+                    os.write(input.getBytes(StandardCharsets.UTF_8));
+                    os.flush();
+                    os.close(); // 关闭 stdin，让程序知道输入结束
+                }
+            }
 
             // 读取输出（设置超时）
-            String output = readStreamWithTimeout(execProcess.getInputStream(), MAX_OUTPUT_SIZE, RUN_TIMEOUT + 2);
-            boolean finished = execProcess.waitFor(RUN_TIMEOUT + 2, TimeUnit.SECONDS);
+            String output = readStreamWithTimeout(runProcess.getInputStream(), MAX_OUTPUT_SIZE, RUN_TIMEOUT + 2);
+            boolean finished = runProcess.waitFor(RUN_TIMEOUT + 2, TimeUnit.SECONDS);
 
             // 如果进程还在运行，强制停止
             if (!finished) {
-                execProcess.destroyForcibly();
+                runProcess.destroyForcibly();
                 output += "\n[程序执行超时，已强制终止]";
+            } else {
+                // 程序已结束，尝试读取剩余输出（可能还有缓冲的数据）
+                try {
+                    Thread.sleep(100); // 等待缓冲区刷新
+                    byte[] remaining = new byte[8192];
+                    int remainingBytes = runProcess.getInputStream().available();
+                    if (remainingBytes > 0) {
+                        int n = runProcess.getInputStream().read(remaining, 0, Math.min(remainingBytes, remaining.length));
+                        if (n > 0 && output.length() + n <= MAX_OUTPUT_SIZE) {
+                            output += new String(remaining, 0, n, StandardCharsets.UTF_8);
+                        }
+                    }
+                } catch (Exception e) {
+                    // 忽略读取剩余数据时的错误
+                    log.debug("读取剩余输出时出错: {}", e.getMessage());
+                }
             }
 
-            int exitCode = finished ? execProcess.exitValue() : -1;
+            int exitCode = finished ? runProcess.exitValue() : -1;
             boolean success = finished && exitCode == 0;
 
             return new ExecutionResult(success, output, "", exitCode);
@@ -202,38 +254,64 @@ public class DockerCodeExecutionService {
 
     /**
      * 带超时的流读取方法
+     * 使用阻塞读取，但通过超时机制控制总时间
      */
     private String readStreamWithTimeout(InputStream is, int maxSize, int timeoutSeconds) throws IOException {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         byte[] chunk = new byte[1024];
         long startTime = System.currentTimeMillis();
         long timeoutMillis = timeoutSeconds * 1000L;
+        long lastDataTime = startTime;
+        boolean hasData = false;
         
         while (true) {
-            // 检查是否超时
-            if (System.currentTimeMillis() - startTime > timeoutMillis) {
+            // 检查是否超时（如果已经有数据，给一点额外时间读取剩余数据）
+            long elapsed = System.currentTimeMillis() - startTime;
+            long sinceLastData = System.currentTimeMillis() - lastDataTime;
+            
+            // 如果超时且超过500ms没有新数据，则退出
+            if (elapsed > timeoutMillis && (sinceLastData > 500 || !hasData)) {
                 break;
             }
             
-            // 检查是否有可用数据（非阻塞）
-            if (is.available() > 0) {
-                int n = is.read(chunk);
-                if (n == -1) {
-                    break;
+            try {
+                // 设置非阻塞读取的超时
+                if (is.available() > 0) {
+                    int n = is.read(chunk);
+                    if (n == -1) {
+                        // 流已关闭，继续读取剩余数据
+                        break;
+                    }
+                    if (n > 0) {
+                        if (buffer.size() + n > maxSize) {
+                            throw new IOException("输出超过最大限制（1MB）");
+                        }
+                        buffer.write(chunk, 0, n);
+                        lastDataTime = System.currentTimeMillis();
+                        hasData = true;
+                    }
+                } else {
+                    // 没有可用数据，短暂休眠
+                    Thread.sleep(10);
                 }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        
+        // 尝试读取剩余数据（非阻塞）
+        try {
+            while (is.available() > 0) {
+                int n = is.read(chunk);
+                if (n == -1 || n == 0) break;
                 if (buffer.size() + n > maxSize) {
                     throw new IOException("输出超过最大限制（1MB）");
                 }
                 buffer.write(chunk, 0, n);
-            } else {
-                // 没有数据时短暂休眠，避免 CPU 占用过高
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
             }
+        } catch (IOException e) {
+            // 忽略读取剩余数据时的错误
         }
         
         return buffer.toString(StandardCharsets.UTF_8);

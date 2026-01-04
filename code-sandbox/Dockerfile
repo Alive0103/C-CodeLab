@@ -10,11 +10,21 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 创建代码执行目录
-RUN mkdir -p /app/code && \
-    chmod 777 /app/code
+# 创建非特权用户（UID 1000，GID 1000）
+RUN groupadd -r sandbox && \
+    useradd -r -g sandbox -u 1000 -d /app -s /bin/bash sandbox && \
+    mkdir -p /app/code && \
+    chown -R sandbox:sandbox /app && \
+    chmod 755 /app && \
+    chmod 755 /app/code
+
+# 确保/tmp目录存在且可写
+RUN mkdir -p /tmp && chmod 1777 /tmp
 
 WORKDIR /app/code
+
+# 使用非特权用户运行
+USER sandbox
 
 # 默认命令
 CMD ["/bin/bash"]

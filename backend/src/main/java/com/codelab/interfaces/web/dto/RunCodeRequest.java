@@ -10,4 +10,5 @@ public class RunCodeRequest {
     @Size(max = 10 * 1024)
     private String code;
     private String title;
+    private String input; // 标准输入内容（可选）
 }
